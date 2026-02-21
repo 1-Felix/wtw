@@ -1,72 +1,52 @@
 import { SeasonCard, MovieCard } from "@/components/media-card";
-import { getCache } from "@/lib/sync/cache";
-import { evaluateSeason, evaluateMovie } from "@/lib/rules/evaluator";
+import type { ReadinessVerdict } from "@/lib/models/readiness";
 
 export const dynamic = "force-dynamic";
 
-export default function AlmostReadyPage() {
-  const cache = getCache();
+interface SeasonWithVerdict {
+  seriesId: string;
+  seriesTitle: string;
+  seasonNumber: number;
+  totalEpisodes: number;
+  availableEpisodes: number;
+  posterImageId: string | null;
+  dateAdded: string;
+  verdict: ReadinessVerdict;
+}
 
-  const almostReadySeasons: Array<{
-    seriesId: string;
-    seriesTitle: string;
-    seasonNumber: number;
-    totalEpisodes: number;
-    availableEpisodes: number;
-    posterImageId: string | null;
-    dateAdded: string;
-    verdict: ReturnType<typeof evaluateSeason>;
-  }> = [];
+interface MovieWithVerdict {
+  id: string;
+  title: string;
+  year: number | null;
+  posterImageId: string | null;
+  audioLanguages: string[];
+  dateAdded: string;
+  verdict: ReadinessVerdict;
+}
 
-  const almostReadyMovies: Array<{
-    id: string;
-    title: string;
-    year: number | null;
-    posterImageId: string | null;
-    audioLanguages: string[];
-    dateAdded: string;
-    verdict: ReturnType<typeof evaluateMovie>;
-  }> = [];
+interface MediaResponse {
+  almostReady: {
+    seasons: SeasonWithVerdict[];
+    movies: MovieWithVerdict[];
+  };
+}
 
-  for (const series of cache.series) {
-    for (const season of series.seasons) {
-      const verdict = evaluateSeason(season, series);
-      if (verdict.status === "almost-ready") {
-        almostReadySeasons.push({
-          seriesId: series.id,
-          seriesTitle: series.title,
-          seasonNumber: season.seasonNumber,
-          totalEpisodes: season.totalEpisodes,
-          availableEpisodes: season.availableEpisodes,
-          posterImageId: series.posterImageId,
-          dateAdded: series.dateAdded,
-          verdict,
-        });
-      }
-    }
-  }
+async function getMediaData(): Promise<MediaResponse> {
+  const res = await fetch("http://localhost:3000/api/media", {
+    cache: "no-store",
+  });
+  return res.json();
+}
 
-  for (const movie of cache.movies) {
-    if (movie.isWatched) continue;
-    const verdict = evaluateMovie(movie);
-    if (verdict.status === "almost-ready") {
-      almostReadyMovies.push({
-        id: movie.id,
-        title: movie.title,
-        year: movie.year,
-        posterImageId: movie.posterImageId,
-        audioLanguages: [...new Set(movie.audioStreams.map((s) => s.language))],
-        dateAdded: movie.dateAdded,
-        verdict,
-      });
-    }
-  }
+export default async function AlmostReadyPage() {
+  const data = await getMediaData();
+  const { almostReady } = data;
 
   // Sort by progress (closest to ready first)
-  almostReadySeasons.sort(
+  const almostReadySeasons = almostReady.seasons.sort(
     (a, b) => b.verdict.progressPercent - a.verdict.progressPercent
   );
-  almostReadyMovies.sort(
+  const almostReadyMovies = almostReady.movies.sort(
     (a, b) => b.verdict.progressPercent - a.verdict.progressPercent
   );
 
@@ -81,9 +61,7 @@ export default function AlmostReadyPage() {
 
       {isEmpty ? (
         <div className="rounded-md border border-border bg-card p-8 text-center">
-          <p className="text-muted-foreground">
-            No items are almost ready.
-          </p>
+          <p className="text-muted-foreground">No items are almost ready.</p>
         </div>
       ) : (
         <div className="space-y-8">
