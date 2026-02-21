@@ -1,9 +1,12 @@
+import { existsSync, readFileSync, writeFileSync } from "fs";
 import type { Series, Movie } from "@/lib/models/media";
 import type { SyncState } from "@/lib/models/sync";
 import { createInitialSyncState } from "@/lib/models/sync";
 import type { JellyfinSyncResult } from "@/lib/sync/jellyfin-sync";
 import type { SonarrSeriesData } from "@/lib/sync/sonarr-sync";
 import type { RadarrMovieData } from "@/lib/sync/radarr-sync";
+
+const CACHE_FILE = "/config/cache.json";
 
 export interface CacheData {
   series: Series[];
@@ -17,51 +20,84 @@ export interface CacheData {
   lastRadarrData: RadarrMovieData[];
 }
 
-let cache: CacheData = {
-  series: [],
-  movies: [],
-  syncState: createInitialSyncState(true, false, false),
-  lastJellyfinData: null,
-  lastSonarrData: [],
-  lastRadarrData: [],
-};
+function getDefaultCache(): CacheData {
+  return {
+    series: [],
+    movies: [],
+    syncState: createInitialSyncState(true, false, false),
+    lastJellyfinData: null,
+    lastSonarrData: [],
+    lastRadarrData: [],
+  };
+}
+
+function loadCache(): CacheData {
+  try {
+    if (existsSync(CACHE_FILE)) {
+      const data = readFileSync(CACHE_FILE, "utf-8");
+      return JSON.parse(data) as CacheData;
+    }
+  } catch (err) {
+    console.error("Failed to load cache from file:", err);
+  }
+  return getDefaultCache();
+}
+
+function saveCache(cache: CacheData): void {
+  try {
+    writeFileSync(CACHE_FILE, JSON.stringify(cache), "utf-8");
+  } catch (err) {
+    console.error("Failed to save cache to file:", err);
+  }
+}
+
+// In-memory cache that syncs to file
+let cache: CacheData = loadCache();
 
 export function getCache(): Readonly<CacheData> {
+  // Always read from file to ensure we have the latest state
+  // (handles module isolation between instrumentation and request handlers)
+  cache = loadCache();
   return cache;
 }
 
 export function updateMedia(series: Series[], movies: Movie[]) {
-  cache = { ...cache, series, movies };
+  cache = { ...loadCache(), series, movies };
+  saveCache(cache);
 }
 
 export function updateSyncState(syncState: SyncState) {
-  cache = { ...cache, syncState };
+  cache = { ...loadCache(), syncState };
+  saveCache(cache);
 }
 
 export function getSyncState(): SyncState {
-  return cache.syncState;
+  return getCache().syncState;
 }
 
 export function updateLastJellyfinData(data: JellyfinSyncResult) {
-  cache = { ...cache, lastJellyfinData: data };
+  cache = { ...loadCache(), lastJellyfinData: data };
+  saveCache(cache);
 }
 
 export function getLastJellyfinData(): JellyfinSyncResult | null {
-  return cache.lastJellyfinData;
+  return getCache().lastJellyfinData;
 }
 
 export function updateLastSonarrData(data: SonarrSeriesData[]) {
-  cache = { ...cache, lastSonarrData: data };
+  cache = { ...loadCache(), lastSonarrData: data };
+  saveCache(cache);
 }
 
 export function updateLastRadarrData(data: RadarrMovieData[]) {
-  cache = { ...cache, lastRadarrData: data };
+  cache = { ...loadCache(), lastRadarrData: data };
+  saveCache(cache);
 }
 
 export function getLastSonarrData(): SonarrSeriesData[] {
-  return cache.lastSonarrData;
+  return getCache().lastSonarrData;
 }
 
 export function getLastRadarrData(): RadarrMovieData[] {
-  return cache.lastRadarrData;
+  return getCache().lastRadarrData;
 }
