@@ -1,0 +1,36 @@
+services:
+  wtw:
+    image: wtw:latest
+    # Or build from source:
+    # build: .
+    container_name: wtw
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      # --- Required: Jellyfin ---
+      JELLYFIN_URL: "http://jellyfin:8096"
+      JELLYFIN_API_KEY: "your-jellyfin-api-key"
+
+      # --- Optional: Sonarr ---
+      # SONARR_URL: "http://sonarr:8989"
+      # SONARR_API_KEY: "your-sonarr-api-key"
+
+      # --- Optional: Radarr ---
+      # RADARR_URL: "http://radarr:7878"
+      # RADARR_API_KEY: "your-radarr-api-key"
+
+      # --- Sync interval (minutes, default: 15) ---
+      # SYNC_INTERVAL_MINUTES: 15
+
+    # volumes:
+      # Optional: Mount a rules config file for advanced settings
+      # - ./rules.json:/config/rules.json:ro
+
+    # If your services are on a custom Docker network:
+    # networks:
+    #   - media
+
+# networks:
+#   media:
+#     external: true
