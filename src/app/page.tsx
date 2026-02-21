@@ -1,64 +1,88 @@
 import { SeasonCard, MovieCard } from "@/components/media-card";
-import type { ReadinessVerdict } from "@/lib/models/readiness";
+import { getCache } from "@/lib/sync/cache";
+import { evaluateSeason, evaluateMovie } from "@/lib/rules/evaluator";
 
 export const dynamic = "force-dynamic";
 
-interface SeasonWithVerdict {
-  seriesId: string;
-  seriesTitle: string;
-  seasonNumber: number;
-  totalEpisodes: number;
-  availableEpisodes: number;
-  posterImageId: string | null;
-  dateAdded: string;
-  verdict: ReadinessVerdict;
-}
+export default function ReadyToWatchPage() {
+  const cache = getCache();
 
-interface MovieWithVerdict {
-  id: string;
-  title: string;
-  year: number | null;
-  posterImageId: string | null;
-  audioLanguages: string[];
-  dateAdded: string;
-  verdict: ReadinessVerdict;
-}
+  const readySeasons: Array<{
+    seriesId: string;
+    seriesTitle: string;
+    seasonNumber: number;
+    totalEpisodes: number;
+    availableEpisodes: number;
+    posterImageId: string | null;
+    dateAdded: string;
+    verdict: ReturnType<typeof evaluateSeason>;
+  }> = [];
 
-interface MediaResponse {
-  ready: {
-    seasons: SeasonWithVerdict[];
-    movies: MovieWithVerdict[];
-  };
-  syncState: {
-    phase: "idle" | "syncing" | "initializing";
-  };
-}
+  const readyMovies: Array<{
+    id: string;
+    title: string;
+    year: number | null;
+    posterImageId: string | null;
+    audioLanguages: string[];
+    dateAdded: string;
+    verdict: ReturnType<typeof evaluateMovie>;
+  }> = [];
 
-async function getMediaData(): Promise<MediaResponse> {
-  // Fetch from internal API to ensure we get the shared module state
-  // (instrumentation and API routes share context, but Server Components don't)
-  const res = await fetch("http://localhost:3000/api/media", {
-    cache: "no-store",
-  });
-  return res.json();
-}
+  for (const series of cache.series) {
+    for (const season of series.seasons) {
+      const verdict = evaluateSeason(season, series);
+      if (verdict.status === "ready") {
+        readySeasons.push({
+          seriesId: series.id,
+          seriesTitle: series.title,
+          seasonNumber: season.seasonNumber,
+          totalEpisodes: season.totalEpisodes,
+          availableEpisodes: season.availableEpisodes,
+          posterImageId: series.posterImageId,
+          dateAdded: series.dateAdded,
+          verdict,
+        });
+      }
+    }
+  }
 
-export default async function ReadyToWatchPage() {
-  const data = await getMediaData();
-  const { ready, syncState } = data;
+  for (const movie of cache.movies) {
+    if (movie.isWatched) continue;
+    const verdict = evaluateMovie(movie);
+    if (verdict.status === "ready") {
+      readyMovies.push({
+        id: movie.id,
+        title: movie.title,
+        year: movie.year,
+        posterImageId: movie.posterImageId,
+        audioLanguages: [...new Set(movie.audioStreams.map((s) => s.language))],
+        dateAdded: movie.dateAdded,
+        verdict,
+      });
+    }
+  }
 
-  if (syncState.phase === "initializing") {
+  readySeasons.sort(
+    (a, b) => new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime()
+  );
+  readyMovies.sort(
+    (a, b) => new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime()
+  );
+
+  const isEmpty = readySeasons.length === 0 && readyMovies.length === 0;
+
+  if (cache.syncState.phase === "initializing") {
     return (
       <div className="flex h-full items-center justify-center">
         <div className="text-center">
           <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          <p className="text-muted-foreground">Running initial sync...</p>
+          <p className="text-muted-foreground">
+            Running initial sync...
+          </p>
         </div>
       </div>
     );
   }
-
-  const isEmpty = ready.seasons.length === 0 && ready.movies.length === 0;
 
   return (
     <div>
@@ -80,13 +104,13 @@ export default async function ReadyToWatchPage() {
         </div>
       ) : (
         <div className="space-y-8">
-          {ready.seasons.length > 0 && (
+          {readySeasons.length > 0 && (
             <section>
               <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Series
               </h3>
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 tv:gap-6">
-                {ready.seasons.map((item) => (
+                {readySeasons.map((item) => (
                   <SeasonCard
                     key={`${item.seriesId}-s${item.seasonNumber}`}
                     seriesTitle={item.seriesTitle}
@@ -101,13 +125,13 @@ export default async function ReadyToWatchPage() {
             </section>
           )}
 
-          {ready.movies.length > 0 && (
+          {readyMovies.length > 0 && (
             <section>
               <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Movies
               </h3>
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 tv:gap-6">
-                {ready.movies.map((item) => (
+                {readyMovies.map((item) => (
                   <MovieCard
                     key={item.id}
                     title={item.title}
