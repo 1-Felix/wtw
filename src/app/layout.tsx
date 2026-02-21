@@ -3,8 +3,9 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { HealthIndicator } from "@/components/health-indicator";
 import { RefreshButton } from "@/components/refresh-button";
 import { Sidebar } from "@/components/sidebar";
-import { NavLink } from "@/components/nav-link";
+import { BottomTabBar } from "@/components/bottom-tab-bar";
 import { ConfigWarningBanner } from "@/components/config-warning-banner";
+import { getNavCounts } from "@/lib/counts";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -28,6 +29,8 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const counts = getNavCounts();
+
   return (
     <html lang="en" className="dark">
       <body
@@ -35,7 +38,7 @@ export default function RootLayout({
       >
         <div className="flex h-screen overflow-hidden">
           {/* Sidebar — collapsible on tablet, hidden on mobile */}
-          <Sidebar />
+          <Sidebar counts={counts} />
 
           {/* Main content */}
           <main className="flex flex-1 flex-col overflow-hidden">
@@ -60,19 +63,14 @@ export default function RootLayout({
             {/* Config warning banner */}
             <ConfigWarningBanner />
 
-            {/* Mobile navigation */}
-            <div className="flex gap-1 overflow-x-auto border-b border-border bg-sidebar px-3 py-2 md:hidden">
-              <NavLink href="/" label="Ready" />
-              <NavLink href="/almost-ready" label="Almost" />
-              <NavLink href="/languages" label="Languages" />
-              <NavLink href="/continue" label="Continue" />
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-4 md:p-6">
+            <div className="flex-1 overflow-y-auto p-4 pb-20 md:p-6 md:pb-6">
               {children}
             </div>
           </main>
         </div>
+
+        {/* Mobile bottom tab bar */}
+        <BottomTabBar counts={counts} />
       </body>
     </html>
   );

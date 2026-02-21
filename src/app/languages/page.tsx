@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSyncReady } from "@/hooks/use-sync-ready";
+import { SyncGuardSpinner } from "@/components/sync-guard";
 
 interface LanguageData {
   seriesId: string;
@@ -20,6 +22,7 @@ interface LanguageData {
 }
 
 export default function LanguagesPage() {
+  const syncReady = useSyncReady();
   const [seriesList, setSeriesList] = useState<
     Array<{ id: string; title: string }>
   >([]);
@@ -27,11 +30,14 @@ export default function LanguagesPage() {
   const [languageData, setLanguageData] = useState<LanguageData | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Fetch series list
+  // Fetch series list once sync is ready
   useEffect(() => {
-    fetch("/api/media")
-      .then((res) => res.json())
-      .then((data) => {
+    if (!syncReady) return;
+
+    const load = async () => {
+      try {
+        const res = await fetch("/api/media");
+        const data = await res.json();
         const allSeries = new Map<string, string>();
         for (const season of [
           ...data.ready.seasons,
@@ -45,9 +51,12 @@ export default function LanguagesPage() {
             title,
           }))
         );
-      })
-      .catch(() => {});
-  }, []);
+      } catch {
+        // ignore
+      }
+    };
+    load();
+  }, [syncReady]);
 
   // Fetch language data when series is selected
   useEffect(() => {
@@ -61,6 +70,10 @@ export default function LanguagesPage() {
       })
       .catch(() => setLoading(false));
   }, [selectedSeriesId]);
+
+  if (!syncReady) {
+    return <SyncGuardSpinner />;
+  }
 
   return (
     <div>

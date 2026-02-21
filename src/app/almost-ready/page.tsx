@@ -1,35 +1,28 @@
-import { SeasonCard, MovieCard } from "@/components/media-card";
+import { SyncGuard } from "@/components/sync-guard";
+import { MediaGridView } from "@/components/media-grid-view";
+import type { SeasonItem, MovieItem } from "@/components/media-grid-view";
 import { getCache } from "@/lib/sync/cache";
 import { evaluateSeason, evaluateMovie } from "@/lib/rules/evaluator";
+import { getDismissedIds } from "@/lib/db/dismissed";
 
 export const dynamic = "force-dynamic";
 
 export default function AlmostReadyPage() {
   const cache = getCache();
+  let dismissedIds: Set<string>;
+  try {
+    dismissedIds = getDismissedIds();
+  } catch {
+    dismissedIds = new Set();
+  }
 
-  const almostReadySeasons: Array<{
-    seriesId: string;
-    seriesTitle: string;
-    seasonNumber: number;
-    totalEpisodes: number;
-    availableEpisodes: number;
-    posterImageId: string | null;
-    dateAdded: string;
-    verdict: ReturnType<typeof evaluateSeason>;
-  }> = [];
-
-  const almostReadyMovies: Array<{
-    id: string;
-    title: string;
-    year: number | null;
-    posterImageId: string | null;
-    audioLanguages: string[];
-    dateAdded: string;
-    verdict: ReturnType<typeof evaluateMovie>;
-  }> = [];
+  const almostReadySeasons: SeasonItem[] = [];
+  const almostReadyMovies: MovieItem[] = [];
 
   for (const series of cache.series) {
     for (const season of series.seasons) {
+      const seasonKey = `${series.id}-s${season.seasonNumber}`;
+      if (dismissedIds.has(seasonKey)) continue;
       const verdict = evaluateSeason(season, series);
       if (verdict.status === "almost-ready") {
         almostReadySeasons.push({
@@ -41,6 +34,12 @@ export default function AlmostReadyPage() {
           posterImageId: series.posterImageId,
           dateAdded: series.dateAdded,
           verdict,
+          episodes: season.episodes.map((ep) => ({
+            episodeNumber: ep.episodeNumber,
+            title: ep.title,
+            hasFile: ep.hasFile,
+            audioLanguages: ep.audioStreams.map((s) => s.language),
+          })),
         });
       }
     }
@@ -48,6 +47,7 @@ export default function AlmostReadyPage() {
 
   for (const movie of cache.movies) {
     if (movie.isWatched) continue;
+    if (dismissedIds.has(movie.id)) continue;
     const verdict = evaluateMovie(movie);
     if (verdict.status === "almost-ready") {
       almostReadyMovies.push({
@@ -56,6 +56,7 @@ export default function AlmostReadyPage() {
         year: movie.year,
         posterImageId: movie.posterImageId,
         audioLanguages: [...new Set(movie.audioStreams.map((s) => s.language))],
+        subtitleLanguages: [...new Set(movie.subtitleStreams.map((s) => s.language))],
         dateAdded: movie.dateAdded,
         verdict,
       });
@@ -70,65 +71,19 @@ export default function AlmostReadyPage() {
     (a, b) => b.verdict.progressPercent - a.verdict.progressPercent
   );
 
-  const isEmpty =
-    almostReadySeasons.length === 0 && almostReadyMovies.length === 0;
-
   return (
-    <div>
-      <h2 className="mb-6 text-xl font-semibold tracking-tight tv:text-2xl">
-        Almost Ready
-      </h2>
+    <SyncGuard>
+      <div>
+        <h2 className="mb-6 text-xl font-semibold tracking-tight tv:text-2xl">
+          Almost Ready
+        </h2>
 
-      {isEmpty ? (
-        <div className="rounded-md border border-border bg-card p-8 text-center">
-          <p className="text-muted-foreground">
-            No items are almost ready.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-8">
-          {almostReadySeasons.length > 0 && (
-            <section>
-              <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Series
-              </h3>
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 tv:gap-6">
-                {almostReadySeasons.map((item) => (
-                  <SeasonCard
-                    key={`${item.seriesId}-s${item.seasonNumber}`}
-                    seriesTitle={item.seriesTitle}
-                    seasonNumber={item.seasonNumber}
-                    totalEpisodes={item.totalEpisodes}
-                    availableEpisodes={item.availableEpisodes}
-                    posterImageId={item.posterImageId}
-                    verdict={item.verdict}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
-
-          {almostReadyMovies.length > 0 && (
-            <section>
-              <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Movies
-              </h3>
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 tv:gap-6">
-                {almostReadyMovies.map((item) => (
-                  <MovieCard
-                    key={item.id}
-                    title={item.title}
-                    year={item.year}
-                    posterImageId={item.posterImageId}
-                    audioLanguages={item.audioLanguages}
-                    verdict={item.verdict}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
-        </div>
-      )}
-    </div>
+        <MediaGridView
+          seasons={almostReadySeasons}
+          movies={almostReadyMovies}
+          emptyMessage="No items are almost ready."
+        />
+      </div>
+    </SyncGuard>
   );
 }

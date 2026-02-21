@@ -1,6 +1,15 @@
 export async function register() {
   // Only run on the server
   if (process.env.NEXT_RUNTIME === "nodejs") {
+    // Initialize database before anything else
+    const { initDatabase } = await import("@/lib/db");
+    try {
+      initDatabase();
+    } catch (err) {
+      console.error("Database initialization failed:", err);
+      console.error("Continuing without persistence — settings will use defaults.");
+    }
+
     const { startSyncScheduler, stopSyncScheduler } = await import(
       "@/lib/sync/orchestrator"
     );

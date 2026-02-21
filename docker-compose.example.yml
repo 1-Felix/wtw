@@ -1,6 +1,6 @@
 services:
   wtw:
-    image: wtw:latest
+    image: ghcr.io/1-felix/wtw:latest
     # Or build from source:
     # build: .
     container_name: wtw
@@ -23,13 +23,17 @@ services:
       # --- Sync interval (minutes, default: 15) ---
       # SYNC_INTERVAL_MINUTES: 15
 
-    # volumes:
-      # Optional: Mount a rules config file for advanced settings
-      # - ./rules.json:/config/rules.json:ro
+    volumes:
+      # Recommended: Persist settings, notification config, and dismissed items
+      # across container restarts. Also supports optional rules.json import.
+      - wtw-config:/config
 
     # If your services are on a custom Docker network:
     # networks:
     #   - media
+
+volumes:
+  wtw-config:
 
 # networks:
 #   media:

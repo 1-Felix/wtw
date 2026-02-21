@@ -43,3 +43,6 @@ next-env.d.ts
 .claude
 .opencode
 openspec
+
+# local test compose 
+docker-compose.test.yml

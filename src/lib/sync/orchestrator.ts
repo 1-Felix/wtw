@@ -11,6 +11,7 @@ import {
   updateMedia,
   updateSyncState,
   getSyncState,
+  getCache,
   updateLastJellyfinData,
   getLastJellyfinData,
   updateLastSonarrData,
@@ -20,9 +21,19 @@ import {
 } from "./cache";
 import type { SyncState, ServiceStatus } from "@/lib/models/sync";
 import { createInitialSyncState } from "@/lib/models/sync";
+import { evaluateSeason, evaluateMovie } from "@/lib/rules/evaluator";
+import type { VerdictMap, VerdictEntry } from "@/lib/notifications/transition-detector";
+import { detectTransitions } from "@/lib/notifications/transition-detector";
+import { dispatchNotifications } from "@/lib/notifications/dispatcher";
 
 let syncInProgress = false;
 let syncTimer: ReturnType<typeof setInterval> | null = null;
+
+/**
+ * Previous verdict map for transition detection.
+ * null means "first sync, no previous data" — skip notifications.
+ */
+let previousVerdicts: VerdictMap | null = null;
 
 /** Run a full sync cycle */
 export async function runSync(): Promise<void> {
@@ -103,6 +114,21 @@ export async function runSync(): Promise<void> {
     lastSyncEnd: endTime,
     services,
   });
+
+  // --- Notification check ---
+  try {
+    const currentVerdicts = buildVerdictMap();
+    const events = detectTransitions(previousVerdicts, currentVerdicts);
+
+    if (events.length > 0) {
+      await dispatchNotifications(events);
+    }
+
+    // Store for next comparison (even on first sync, so next sync can detect transitions)
+    previousVerdicts = currentVerdicts;
+  } catch (err) {
+    console.error("Notification check failed:", err);
+  }
 
   syncInProgress = false;
   console.log(`Sync completed at ${endTime}`);
@@ -186,4 +212,47 @@ function markError(status: ServiceStatus, err: unknown): ServiceStatus {
     lastErrorMessage:
       err instanceof Error ? err.message : String(err),
   };
+}
+
+/**
+ * Build a verdict map from the current cache for transition detection.
+ */
+function buildVerdictMap(): VerdictMap {
+  const cache = getCache();
+  const map: VerdictMap = new Map();
+
+  for (const series of cache.series) {
+    for (const season of series.seasons) {
+      const verdict = evaluateSeason(season, series);
+      const key = `${series.id}-s${season.seasonNumber}`;
+      const entry: VerdictEntry = {
+        mediaId: key,
+        mediaTitle: series.title,
+        mediaType: "season",
+        seasonNumber: season.seasonNumber,
+        status: verdict.status,
+        episodeCurrent: season.availableEpisodes,
+        episodeTotal: season.totalEpisodes,
+        posterImageId: series.posterImageId,
+        ruleResults: verdict.ruleResults,
+      };
+      map.set(key, entry);
+    }
+  }
+
+  for (const movie of cache.movies) {
+    if (movie.isWatched) continue;
+    const verdict = evaluateMovie(movie);
+    const entry: VerdictEntry = {
+      mediaId: movie.id,
+      mediaTitle: movie.title,
+      mediaType: "movie",
+      status: verdict.status,
+      posterImageId: movie.posterImageId,
+      ruleResults: verdict.ruleResults,
+    };
+    map.set(movie.id, entry);
+  }
+
+  return map;
 }

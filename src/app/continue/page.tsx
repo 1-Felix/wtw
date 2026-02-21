@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { PosterImage } from "@/components/poster-image";
 import { ProgressBar } from "@/components/progress-bar";
+import { useSyncReady } from "@/hooks/use-sync-ready";
+import { SyncGuardSpinner } from "@/components/sync-guard";
 
 interface ContinueItem {
   type: "episode" | "movie";
@@ -21,25 +23,29 @@ interface ContinueItem {
 }
 
 export default function ContinueWatchingPage() {
+  const syncReady = useSyncReady();
   const [items, setItems] = useState<ContinueItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/media/continue")
-      .then((res) => res.json())
-      .then((data) => {
-        setItems(data.items);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, []);
+    if (!syncReady) return;
 
-  if (loading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-      </div>
-    );
+    const load = async () => {
+      try {
+        const res = await fetch("/api/media/continue");
+        const data = await res.json();
+        setItems(data.items);
+      } catch {
+        // ignore
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [syncReady]);
+
+  if (!syncReady || loading) {
+    return <SyncGuardSpinner />;
   }
 
   return (

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCache } from "@/lib/sync/cache";
 import { evaluateSeason, evaluateMovie } from "@/lib/rules/evaluator";
+import { getDismissedIds } from "@/lib/db/dismissed";
 import type { ReadinessVerdict } from "@/lib/models/readiness";
 
 interface SeasonWithVerdict {
@@ -13,6 +14,7 @@ interface SeasonWithVerdict {
   posterImageId: string | null;
   dateAdded: string;
   verdict: ReadinessVerdict;
+  dismissed: boolean;
 }
 
 interface MovieWithVerdict {
@@ -23,10 +25,18 @@ interface MovieWithVerdict {
   dateAdded: string;
   audioLanguages: string[];
   verdict: ReadinessVerdict;
+  dismissed: boolean;
 }
 
 export async function GET() {
   const cache = getCache();
+  let dismissedIds: Set<string>;
+  try {
+    dismissedIds = getDismissedIds();
+  } catch {
+    dismissedIds = new Set();
+  }
+
   const readySeasons: SeasonWithVerdict[] = [];
   const almostReadySeasons: SeasonWithVerdict[] = [];
   const readyMovies: MovieWithVerdict[] = [];
@@ -35,6 +45,7 @@ export async function GET() {
   for (const series of cache.series) {
     for (const season of series.seasons) {
       const verdict = evaluateSeason(season, series);
+      const seasonKey = `${series.id}-s${season.seasonNumber}`;
       const item: SeasonWithVerdict = {
         seriesId: series.id,
         seriesTitle: series.title,
@@ -45,6 +56,7 @@ export async function GET() {
         posterImageId: series.posterImageId,
         dateAdded: series.dateAdded,
         verdict,
+        dismissed: dismissedIds.has(seasonKey),
       };
 
       if (verdict.status === "ready") readySeasons.push(item);
@@ -64,6 +76,7 @@ export async function GET() {
       dateAdded: movie.dateAdded,
       audioLanguages: [...new Set(languages)],
       verdict,
+      dismissed: dismissedIds.has(movie.id),
     };
 
     if (verdict.status === "ready") readyMovies.push(item);

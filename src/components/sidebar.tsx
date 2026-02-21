@@ -1,9 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import { Settings } from "lucide-react";
 import { NavLink } from "@/components/nav-link";
+import type { NavCounts } from "@/lib/counts";
 
-export function Sidebar() {
+interface SidebarProps {
+  counts: NavCounts;
+}
+
+export function Sidebar({ counts }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
@@ -41,22 +47,31 @@ export function Sidebar() {
           </svg>
         </button>
       </div>
-      <nav className="flex-1 space-y-1 p-3">
-        {collapsed ? (
-          <>
-            <NavLink href="/" label="R" title="Ready to Watch" />
-            <NavLink href="/almost-ready" label="A" title="Almost Ready" />
-            <NavLink href="/languages" label="L" title="Languages" />
-            <NavLink href="/continue" label="C" title="Continue Watching" />
-          </>
-        ) : (
-          <>
-            <NavLink href="/" label="Ready to Watch" />
-            <NavLink href="/almost-ready" label="Almost Ready" />
-            <NavLink href="/languages" label="Languages" />
-            <NavLink href="/continue" label="Continue Watching" />
-          </>
-        )}
+      <nav className="flex flex-1 flex-col space-y-1 p-3">
+        <div className="flex-1 space-y-1">
+          {collapsed ? (
+            <>
+              <NavLink href="/" label="R" title="Ready to Watch" count={counts.ready} />
+              <NavLink href="/almost-ready" label="A" title="Almost Ready" count={counts.almostReady} />
+              <NavLink href="/languages" label="L" title="Languages" />
+              <NavLink href="/continue" label="C" title="Continue Watching" count={counts.continue} />
+            </>
+          ) : (
+            <>
+              <NavLink href="/" label="Ready to Watch" count={counts.ready} />
+              <NavLink href="/almost-ready" label="Almost Ready" count={counts.almostReady} />
+              <NavLink href="/languages" label="Languages" />
+              <NavLink href="/continue" label="Continue Watching" count={counts.continue} />
+            </>
+          )}
+        </div>
+        <div className="border-t border-border pt-2">
+          {collapsed ? (
+            <NavLink href="/settings" label="" title="Settings" icon={<Settings className="h-4 w-4" />} />
+          ) : (
+            <NavLink href="/settings" label="Settings" icon={<Settings className="h-4 w-4" />} />
+          )}
+        </div>
       </nav>
     </aside>
   );
