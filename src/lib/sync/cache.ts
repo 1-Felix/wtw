@@ -1,12 +1,9 @@
-import { existsSync, readFileSync, writeFileSync } from "fs";
 import type { Series, Movie } from "@/lib/models/media";
 import type { SyncState } from "@/lib/models/sync";
 import { createInitialSyncState } from "@/lib/models/sync";
 import type { JellyfinSyncResult } from "@/lib/sync/jellyfin-sync";
 import type { SonarrSeriesData } from "@/lib/sync/sonarr-sync";
 import type { RadarrMovieData } from "@/lib/sync/radarr-sync";
-
-const CACHE_FILE = "/config/cache.json";
 
 export interface CacheData {
   series: Series[];
@@ -31,73 +28,65 @@ function getDefaultCache(): CacheData {
   };
 }
 
-function loadCache(): CacheData {
-  try {
-    if (existsSync(CACHE_FILE)) {
-      const data = readFileSync(CACHE_FILE, "utf-8");
-      return JSON.parse(data) as CacheData;
-    }
-  } catch (err) {
-    console.error("Failed to load cache from file:", err);
-  }
-  return getDefaultCache();
+/**
+ * Use globalThis to ensure a single cache instance across all module
+ * evaluation contexts. In Next.js standalone mode, the bundler may create
+ * separate module instances for instrumentation vs request handlers.
+ * globalThis is per-process, so it bridges that gap without file I/O.
+ */
+const CACHE_KEY = "__wtw_cache" as const;
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __wtw_cache: CacheData | undefined;
 }
 
-function saveCache(cache: CacheData): void {
-  try {
-    writeFileSync(CACHE_FILE, JSON.stringify(cache), "utf-8");
-  } catch (err) {
-    console.error("Failed to save cache to file:", err);
+function getGlobalCache(): CacheData {
+  if (!globalThis[CACHE_KEY]) {
+    globalThis[CACHE_KEY] = getDefaultCache();
   }
+  return globalThis[CACHE_KEY];
 }
-
-// In-memory cache that syncs to file
-let cache: CacheData = loadCache();
 
 export function getCache(): Readonly<CacheData> {
-  // Always read from file to ensure we have the latest state
-  // (handles module isolation between instrumentation and request handlers)
-  cache = loadCache();
-  return cache;
+  return getGlobalCache();
 }
 
 export function updateMedia(series: Series[], movies: Movie[]) {
-  cache = { ...loadCache(), series, movies };
-  saveCache(cache);
+  const cache = getGlobalCache();
+  cache.series = series;
+  cache.movies = movies;
 }
 
 export function updateSyncState(syncState: SyncState) {
-  cache = { ...loadCache(), syncState };
-  saveCache(cache);
+  const cache = getGlobalCache();
+  cache.syncState = syncState;
 }
 
 export function getSyncState(): SyncState {
-  return getCache().syncState;
+  return getGlobalCache().syncState;
 }
 
 export function updateLastJellyfinData(data: JellyfinSyncResult) {
-  cache = { ...loadCache(), lastJellyfinData: data };
-  saveCache(cache);
+  getGlobalCache().lastJellyfinData = data;
 }
 
 export function getLastJellyfinData(): JellyfinSyncResult | null {
-  return getCache().lastJellyfinData;
+  return getGlobalCache().lastJellyfinData;
 }
 
 export function updateLastSonarrData(data: SonarrSeriesData[]) {
-  cache = { ...loadCache(), lastSonarrData: data };
-  saveCache(cache);
+  getGlobalCache().lastSonarrData = data;
 }
 
 export function updateLastRadarrData(data: RadarrMovieData[]) {
-  cache = { ...loadCache(), lastRadarrData: data };
-  saveCache(cache);
+  getGlobalCache().lastRadarrData = data;
 }
 
 export function getLastSonarrData(): SonarrSeriesData[] {
-  return getCache().lastSonarrData;
+  return getGlobalCache().lastSonarrData;
 }
 
 export function getLastRadarrData(): RadarrMovieData[] {
-  return getCache().lastRadarrData;
+  return getGlobalCache().lastRadarrData;
 }
