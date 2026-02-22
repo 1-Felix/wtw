@@ -30,7 +30,6 @@ RUN adduser --system --uid 1001 nextjs
 # Copy standalone output
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/public ./public
 
 # Create config directory for SQLite database and optional rules.json
 RUN mkdir -p /config && chown nextjs:nodejs /config
