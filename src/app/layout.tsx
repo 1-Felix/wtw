@@ -22,6 +22,20 @@ export const metadata: Metadata = {
   title: "wtw — What to Watch",
   description:
     "Self-hosted dashboard for your Jellyfin media stack. See what's ready to watch.",
+  openGraph: {
+    title: "wtw — What to Watch",
+    description:
+      "Self-hosted dashboard for your Jellyfin media stack. See what's ready to watch.",
+    type: "website",
+    images: [
+      {
+        url: "https://raw.githubusercontent.com/1-Felix/wtw/main/docs/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "wtw — What to Watch",
+      },
+    ],
+  },
 };
 
 export default function RootLayout({
