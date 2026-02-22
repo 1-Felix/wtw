@@ -13,7 +13,14 @@ export function ProgressBar({ value, label, className = "" }: ProgressBarProps) 
       {label && (
         <span className="text-xs text-muted-foreground">{label}</span>
       )}
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+      <div
+        className="h-1.5 w-full overflow-hidden rounded-full bg-muted"
+        role="progressbar"
+        aria-valuenow={Math.round(percent)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={label || "Progress"}
+      >
         <div
           className="h-full rounded-full bg-gradient-to-r from-primary to-amber-400 transition-all"
           style={{ width: `${percent}%` }}

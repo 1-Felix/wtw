@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { useSyncReady } from "@/hooks/use-sync-ready";
 import { SyncGuardSpinner } from "@/components/sync-guard";
 
@@ -52,7 +53,7 @@ export default function LanguagesPage() {
           }))
         );
       } catch {
-        // ignore
+        toast.error("Couldn't load series list");
       }
     };
     load();
@@ -68,7 +69,10 @@ export default function LanguagesPage() {
         setLanguageData(data);
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch(() => {
+        toast.error("Couldn't load language data");
+        setLoading(false);
+      });
   }, [selectedSeriesId]);
 
   if (!syncReady) {

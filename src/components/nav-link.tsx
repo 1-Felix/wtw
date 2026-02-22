@@ -19,6 +19,8 @@ export function NavLink({ href, label, icon, title, count }: NavLinkProps) {
     <Link
       href={href}
       title={title}
+      aria-current={isActive ? "page" : undefined}
+      aria-label={count != null && count > 0 ? `${label}, ${count} items` : undefined}
       className={`flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
         isActive
           ? "bg-primary/10 text-primary"

@@ -5,6 +5,7 @@ import { RefreshButton } from "@/components/refresh-button";
 import { Sidebar } from "@/components/sidebar";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
 import { ConfigWarningBanner } from "@/components/config-warning-banner";
+import { Toaster } from "@/components/ui/sonner";
 import { getNavCounts } from "@/lib/counts";
 import "./globals.css";
 
@@ -85,6 +86,8 @@ export default function RootLayout({
 
         {/* Mobile bottom tab bar */}
         <BottomTabBar counts={counts} />
+
+        <Toaster />
       </body>
     </html>
   );

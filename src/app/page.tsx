@@ -1,5 +1,6 @@
+import { Suspense } from "react";
 import { SyncGuard } from "@/components/sync-guard";
-import { MediaGridView } from "@/components/media-grid-view";
+import { MediaGridView, SORT_READY } from "@/components/media-grid-view";
 import type { SeasonItem, MovieItem } from "@/components/media-grid-view";
 import { getCache } from "@/lib/sync/cache";
 import { evaluateSeason, evaluateMovie } from "@/lib/rules/evaluator";
@@ -63,13 +64,6 @@ export default function ReadyToWatchPage() {
     }
   }
 
-  readySeasons.sort(
-    (a, b) => new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime()
-  );
-  readyMovies.sort(
-    (a, b) => new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime()
-  );
-
   return (
     <SyncGuard>
       <div>
@@ -77,19 +71,22 @@ export default function ReadyToWatchPage() {
           Ready to Watch
         </h2>
 
-        <MediaGridView
-          seasons={readySeasons}
-          movies={readyMovies}
-          emptyMessage="No items are ready to watch yet."
-          emptyAction={
-            <a
-              href="/almost-ready"
-              className="mt-2 inline-block text-sm text-primary hover:underline"
-            >
-              Check Almost Ready &rarr;
-            </a>
-          }
-        />
+        <Suspense>
+          <MediaGridView
+            seasons={readySeasons}
+            movies={readyMovies}
+            sort={SORT_READY}
+            emptyMessage="No items are ready to watch yet."
+            emptyAction={
+              <a
+                href="/almost-ready"
+                className="mt-2 inline-block text-sm text-primary hover:underline"
+              >
+                Check Almost Ready &rarr;
+              </a>
+            }
+          />
+        </Suspense>
       </div>
     </SyncGuard>
   );

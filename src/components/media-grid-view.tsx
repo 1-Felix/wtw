@@ -1,11 +1,83 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 import { SeasonCard, MovieCard } from "@/components/media-card";
 import { SearchFilter } from "@/components/search-filter";
 import { DetailPanel } from "@/components/detail-panel";
-import type { DetailItem, SeasonDetailItem, MovieDetailItem, EpisodeInfo } from "@/components/detail-panel";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import type {
+  DetailItem,
+  SeasonDetailItem,
+  MovieDetailItem,
+  EpisodeInfo,
+} from "@/components/detail-panel";
 import type { ReadinessVerdict } from "@/lib/models/readiness";
+
+// --- Sort types ---
+
+export interface SortOption {
+  value: string;
+  label: string;
+}
+
+export interface SortConfig {
+  options: SortOption[];
+  default: string;
+}
+
+// --- Comparator functions ---
+
+type GridItem = SeasonItem | MovieItem;
+
+function getTitle(item: GridItem): string {
+  return "seriesTitle" in item ? item.seriesTitle : item.title;
+}
+
+function getDate(item: GridItem): number {
+  return new Date(item.dateAdded).getTime();
+}
+
+function getProgress(item: GridItem): number {
+  return item.verdict.progressPercent;
+}
+
+const comparators: Record<string, (a: GridItem, b: GridItem) => number> = {
+  date: (a, b) => getDate(b) - getDate(a) || getTitle(a).localeCompare(getTitle(b)),
+  title: (a, b) => getTitle(a).localeCompare(getTitle(b)) || getDate(b) - getDate(a),
+  "title-desc": (a, b) => getTitle(b).localeCompare(getTitle(a)) || getDate(b) - getDate(a),
+  progress: (a, b) => getProgress(b) - getProgress(a) || getTitle(a).localeCompare(getTitle(b)),
+};
+
+// --- Predefined sort configs ---
+
+export const SORT_READY: SortConfig = {
+  options: [
+    { value: "date", label: "Date Added" },
+    { value: "title", label: "Title A-Z" },
+    { value: "title-desc", label: "Title Z-A" },
+  ],
+  default: "date",
+};
+
+export const SORT_ALMOST_READY: SortConfig = {
+  options: [
+    { value: "progress", label: "Progress" },
+    { value: "title", label: "Title A-Z" },
+    { value: "title-desc", label: "Title Z-A" },
+    { value: "date", label: "Date Added" },
+  ],
+  default: "progress",
+};
+
+// --- Item types ---
 
 export interface SeasonItem {
   seriesId: string;
@@ -16,7 +88,6 @@ export interface SeasonItem {
   posterImageId: string | null;
   dateAdded: string;
   verdict: ReadinessVerdict;
-  /** Episode data for the detail panel */
   episodes?: EpisodeInfo[];
 }
 
@@ -36,20 +107,75 @@ interface MediaGridViewProps {
   movies: MovieItem[];
   emptyMessage: string;
   emptyAction?: React.ReactNode;
+  sort?: SortConfig;
 }
 
 export function matchesQuery(title: string, query: string): boolean {
   return title.toLowerCase().includes(query.toLowerCase());
 }
 
+type TypeFilter = "all" | "series" | "movies";
+
 export function MediaGridView({
   seasons,
   movies,
   emptyMessage,
   emptyAction,
+  sort: sortConfig,
 }: MediaGridViewProps) {
-  const [query, setQuery] = useState("");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Initialize state from URL params
+  const [query, setQuery] = useState(() => searchParams.get("q") ?? "");
+  const [sortValue, setSortValue] = useState(() => {
+    const param = searchParams.get("sort");
+    if (param && sortConfig?.options.some((o) => o.value === param)) return param;
+    return sortConfig?.default ?? "date";
+  });
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>(() => {
+    const param = searchParams.get("type");
+    if (param === "series" || param === "movies") return param;
+    return "all";
+  });
   const [selectedItem, setSelectedItem] = useState<DetailItem | null>(null);
+  const [localDismissedIds, setLocalDismissedIds] = useState<Set<string>>(
+    () => new Set()
+  );
+
+  // Update URL when state changes
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (query) params.set("q", query);
+    if (sortConfig && sortValue !== sortConfig.default) params.set("sort", sortValue);
+    if (typeFilter !== "all") params.set("type", typeFilter);
+
+    const paramString = params.toString();
+    const newUrl = paramString ? `?${paramString}` : window.location.pathname;
+    router.replace(newUrl, { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, sortValue, typeFilter]);
+
+  // Keyboard shortcut: "/" to focus search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "/") return;
+      const target = e.target;
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement ||
+        (target instanceof HTMLElement && target.isContentEditable)
+      ) {
+        return;
+      }
+      e.preventDefault();
+      searchInputRef.current?.focus();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const handleSeasonClick = useCallback((season: SeasonItem) => {
     const detail: SeasonDetailItem = {
@@ -84,20 +210,98 @@ export function MediaGridView({
     setSelectedItem(null);
   }, []);
 
-  const handleDismiss = useCallback((mediaId: string, _title: string) => {
-    // Close the panel and remove the item from the local lists
-    setSelectedItem(null);
-    // Trigger a page refresh to re-fetch data with the dismissed item filtered out
-    window.location.reload();
-  }, []);
+  const handleDismiss = useCallback(
+    (mediaId: string, title: string) => {
+      setLocalDismissedIds((prev) => new Set(prev).add(mediaId));
 
-  const filteredSeasons = query
-    ? seasons.filter((s) => matchesQuery(s.seriesTitle, query))
-    : seasons;
+      fetch(`/api/media/${mediaId}/dismiss`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title }),
+      })
+        .then((res) => {
+          if (!res.ok) throw new Error("dismiss failed");
+        })
+        .catch(() => {
+          setLocalDismissedIds((prev) => {
+            const next = new Set(prev);
+            next.delete(mediaId);
+            return next;
+          });
+          toast.error("Couldn't dismiss item — try again");
+        });
 
-  const filteredMovies = query
-    ? movies.filter((m) => matchesQuery(m.title, query))
-    : movies;
+      let undoInvoked = false;
+
+      toast(`${title} dismissed`, {
+        duration: 5000,
+        action: {
+          label: "Undo",
+          onClick: () => {
+            undoInvoked = true;
+
+            setLocalDismissedIds((prev) => {
+              const next = new Set(prev);
+              next.delete(mediaId);
+              return next;
+            });
+
+            fetch(`/api/media/${mediaId}/dismiss`, { method: "DELETE" })
+              .then((res) => {
+                if (res.ok) {
+                  toast.success("Item restored");
+                  router.refresh();
+                } else {
+                  // Undo failed — re-dismiss locally so UI stays consistent with server
+                  setLocalDismissedIds((prev) => new Set(prev).add(mediaId));
+                  toast.error("Couldn't restore item");
+                }
+              })
+              .catch(() => {
+                setLocalDismissedIds((prev) => new Set(prev).add(mediaId));
+                toast.error("Couldn't restore item");
+              });
+          },
+        },
+        onAutoClose: () => {
+          if (!undoInvoked) router.refresh();
+        },
+        onDismiss: () => {
+          if (!undoInvoked) router.refresh();
+        },
+      });
+    },
+    [router]
+  );
+
+  // Filter out optimistically dismissed items
+  const visibleSeasons = seasons.filter(
+    (s) => !localDismissedIds.has(`${s.seriesId}-s${s.seasonNumber}`)
+  );
+  const visibleMovies = movies.filter(
+    (m) => !localDismissedIds.has(m.id)
+  );
+
+  // Apply search filter
+  const searchedSeasons = query
+    ? visibleSeasons.filter((s) => matchesQuery(s.seriesTitle, query))
+    : visibleSeasons;
+
+  const searchedMovies = query
+    ? visibleMovies.filter((m) => matchesQuery(m.title, query))
+    : visibleMovies;
+
+  // Apply sort
+  const comparator = comparators[sortValue] ?? comparators.date;
+  const sortedSeasons = [...searchedSeasons].sort(comparator);
+  const sortedMovies = [...searchedMovies].sort(comparator);
+
+  // Apply type filter
+  const showSeasons = typeFilter !== "movies";
+  const showMovies = typeFilter !== "series";
+
+  const filteredSeasons = showSeasons ? sortedSeasons : [];
+  const filteredMovies = showMovies ? sortedMovies : [];
 
   const hasData = seasons.length > 0 || movies.length > 0;
   const hasResults = filteredSeasons.length > 0 || filteredMovies.length > 0;
@@ -113,12 +317,57 @@ export function MediaGridView({
 
   return (
     <>
-      <SearchFilter query={query} onQueryChange={setQuery} />
+      {/* Toolbar */}
+      <div className="mb-6 flex flex-wrap items-center gap-2">
+        <SearchFilter ref={searchInputRef} query={query} onQueryChange={setQuery} />
 
-      {!hasResults && (
+        {/* Type filter toggle */}
+        <div className="flex rounded-md border border-border">
+          {(["all", "series", "movies"] as const).map((t) => (
+            <button
+              type="button"
+              key={t}
+              onClick={() => setTypeFilter(t)}
+              className={`px-3 py-2 text-xs font-medium capitalize transition-colors ${
+                typeFilter === t
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              } ${t === "all" ? "rounded-l-md" : t === "movies" ? "rounded-r-md" : ""}`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+
+        {/* Sort dropdown */}
+        {sortConfig && (
+          <Select value={sortValue} onValueChange={setSortValue}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {sortConfig.options.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      </div>
+
+      {!hasResults && query && (
         <div className="rounded-md border border-border bg-card p-8 text-center">
           <p className="text-muted-foreground">
             No results for &ldquo;{query}&rdquo;
+          </p>
+        </div>
+      )}
+
+      {!hasResults && !query && (
+        <div className="rounded-md border border-border bg-card p-8 text-center">
+          <p className="text-muted-foreground">
+            No {typeFilter === "series" ? "series" : typeFilter === "movies" ? "movies" : "items"} to show.
           </p>
         </div>
       )}
@@ -178,7 +427,11 @@ export function MediaGridView({
         </div>
       )}
 
-      <DetailPanel item={selectedItem} onClose={handleClose} onDismiss={handleDismiss} />
+      <DetailPanel
+        item={selectedItem}
+        onClose={handleClose}
+        onDismiss={handleDismiss}
+      />
     </>
   );
 }

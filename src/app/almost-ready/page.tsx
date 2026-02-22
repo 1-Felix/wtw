@@ -1,5 +1,6 @@
+import { Suspense } from "react";
 import { SyncGuard } from "@/components/sync-guard";
-import { MediaGridView } from "@/components/media-grid-view";
+import { MediaGridView, SORT_ALMOST_READY } from "@/components/media-grid-view";
 import type { SeasonItem, MovieItem } from "@/components/media-grid-view";
 import { getCache } from "@/lib/sync/cache";
 import { evaluateSeason, evaluateMovie } from "@/lib/rules/evaluator";
@@ -63,14 +64,6 @@ export default function AlmostReadyPage() {
     }
   }
 
-  // Sort by progress (closest to ready first)
-  almostReadySeasons.sort(
-    (a, b) => b.verdict.progressPercent - a.verdict.progressPercent
-  );
-  almostReadyMovies.sort(
-    (a, b) => b.verdict.progressPercent - a.verdict.progressPercent
-  );
-
   return (
     <SyncGuard>
       <div>
@@ -78,11 +71,14 @@ export default function AlmostReadyPage() {
           Almost Ready
         </h2>
 
-        <MediaGridView
-          seasons={almostReadySeasons}
-          movies={almostReadyMovies}
-          emptyMessage="No items are almost ready."
-        />
+        <Suspense>
+          <MediaGridView
+            seasons={almostReadySeasons}
+            movies={almostReadyMovies}
+            sort={SORT_ALMOST_READY}
+            emptyMessage="No items are almost ready."
+          />
+        </Suspense>
       </div>
     </SyncGuard>
   );

@@ -1,7 +1,13 @@
 "use client";
 
-import { useEffect, useCallback, useState, useRef } from "react";
-import { X, Check, AlertCircle, ArrowLeft, EyeOff } from "lucide-react";
+import { useCallback, useRef } from "react";
+import { Check, AlertCircle, ArrowLeft, EyeOff } from "lucide-react";
+import {
+  Sheet,
+  SheetContent,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
 import { PosterImage } from "./poster-image";
 import { ReadinessBadge } from "./readiness-badge";
 import { ProgressBar } from "./progress-bar";
@@ -52,30 +58,9 @@ interface DetailPanelProps {
 }
 
 export function DetailPanel({ item, onClose, onDismiss }: DetailPanelProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [dismissing, setDismissing] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const touchStartX = useRef<number | null>(null);
   const touchDeltaX = useRef(0);
-
-  const handleEscape = useCallback(
-    (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    },
-    [onClose]
-  );
-
-  // Animate open when item changes
-  useEffect(() => {
-    if (item) {
-      // Small delay to ensure the DOM is painted before triggering animation
-      requestAnimationFrame(() => setIsOpen(true));
-      document.addEventListener("keydown", handleEscape);
-      return () => document.removeEventListener("keydown", handleEscape);
-    } else {
-      setIsOpen(false);
-    }
-  }, [item, handleEscape]);
 
   // Swipe-to-dismiss on mobile
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
@@ -107,9 +92,8 @@ export function DetailPanel({ item, onClose, onDismiss }: DetailPanelProps) {
     touchDeltaX.current = 0;
   }, [onClose]);
 
-  const handleDismiss = useCallback(async () => {
-    if (!item || !onDismiss || dismissing) return;
-    setDismissing(true);
+  const handleDismiss = useCallback(() => {
+    if (!item || !onDismiss) return;
 
     const mediaId = item.type === "season"
       ? `${item.seriesId}-s${item.seasonNumber}`
@@ -118,102 +102,85 @@ export function DetailPanel({ item, onClose, onDismiss }: DetailPanelProps) {
       ? `${item.seriesTitle} S${item.seasonNumber}`
       : item.title;
 
-    try {
-      const res = await fetch(`/api/media/${mediaId}/dismiss`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title }),
-      });
-      if (res.ok) {
-        onDismiss(mediaId, title);
-        onClose();
-      }
-    } catch {
-      // ignore
-    } finally {
-      setDismissing(false);
-    }
-  }, [item, onDismiss, onClose, dismissing]);
+    onDismiss(mediaId, title);
+    onClose();
+  }, [item, onDismiss, onClose]);
 
-  if (!item) return null;
+  const panelTitle = item
+    ? item.type === "season"
+      ? `${item.seriesTitle} — Season ${item.seasonNumber}`
+      : item.title
+    : "Details";
 
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        className={`fixed inset-0 z-50 bg-black/60 transition-opacity duration-300 ${
-          isOpen ? "opacity-100" : "opacity-0"
-        }`}
-        onClick={onClose}
-      />
+    <Sheet open={!!item} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <SheetContent
+        side="right"
+        showCloseButton={false}
+        className="w-full gap-0 overflow-y-auto p-0 md:max-w-[420px]"
+      >
+        {/* Accessible title (visually hidden, announced by screen readers) */}
+        <SheetTitle className="sr-only">{panelTitle}</SheetTitle>
 
-      {/* Panel — full-screen on mobile, slide-out on desktop */}
-      <div className="fixed inset-0 z-50 flex items-stretch justify-end">
-        <div
-          ref={panelRef}
-          className={`flex w-full flex-col overflow-y-auto bg-background transition-transform duration-300 ease-in-out md:max-w-[420px] md:border-l md:border-border ${
-            isOpen ? "translate-x-0" : "translate-x-full"
-          }`}
-          onClick={(e) => e.stopPropagation()}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-        >
-          {/* Header */}
-          <div className="sticky top-0 z-10 flex h-14 shrink-0 items-center justify-between border-b border-border bg-background px-4">
-            {/* Mobile back button */}
-            <button
-              onClick={onClose}
-              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground md:hidden"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back
-            </button>
-            {/* Desktop close */}
-            <span className="hidden text-sm font-semibold text-foreground md:block">
-              Details
-            </span>
-            <button
-              onClick={onClose}
-              className="hidden h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-surface hover:text-foreground md:flex"
-              aria-label="Close panel"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
+        {item && (
+          <div
+            ref={panelRef}
+            className="flex min-h-full flex-col"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
+            {/* Header */}
+            <div className="sticky top-0 z-10 flex h-14 shrink-0 items-center justify-between border-b border-border bg-background px-4">
+              {/* Mobile back button */}
+              <button
+                onClick={onClose}
+                className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground md:hidden"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back
+              </button>
+              {/* Desktop title */}
+              <span className="hidden text-sm font-semibold text-foreground md:block">
+                Details
+              </span>
+              {/* Desktop close (hidden, Sheet handles Escape and overlay click) */}
+              <span className="hidden md:block" />
+            </div>
 
-          {/* Content */}
-          <div className="flex-1 space-y-6 p-4">
-            {item.type === "season" ? (
-              <SeasonDetail item={item} />
-            ) : (
-              <MovieDetail item={item} />
+            {/* Content */}
+            <div className="flex-1 space-y-6 p-4">
+              {item.type === "season" ? (
+                <SeasonDetail item={item} />
+              ) : (
+                <MovieDetail item={item} />
+              )}
+            </div>
+
+            {/* Footer — Dismiss button */}
+            {onDismiss && !item.dismissed && (
+              <div className="sticky bottom-0 border-t border-border bg-background px-4 py-3">
+                <Button
+                  variant="outline"
+                  className="w-full text-muted-foreground hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+                  onClick={handleDismiss}
+                >
+                  <EyeOff className="h-4 w-4" />
+                  Dismiss
+                </Button>
+              </div>
+            )}
+            {item.dismissed && (
+              <div className="sticky bottom-0 border-t border-border bg-background px-4 py-3">
+                <p className="text-center text-xs text-muted-foreground">
+                  This item has been dismissed.
+                </p>
+              </div>
             )}
           </div>
-
-          {/* Footer — Dismiss button */}
-          {onDismiss && !item.dismissed && (
-            <div className="sticky bottom-0 border-t border-border bg-background px-4 py-3">
-              <button
-                onClick={handleDismiss}
-                disabled={dismissing}
-                className="flex w-full items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 py-2 text-sm text-muted-foreground transition-colors hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
-              >
-                <EyeOff className="h-4 w-4" />
-                {dismissing ? "Dismissing..." : "Dismiss"}
-              </button>
-            </div>
-          )}
-          {item.dismissed && (
-            <div className="sticky bottom-0 border-t border-border bg-background px-4 py-3">
-              <p className="text-center text-xs text-muted-foreground">
-                This item has been dismissed.
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-    </>
+        )}
+      </SheetContent>
+    </Sheet>
   );
 }
 

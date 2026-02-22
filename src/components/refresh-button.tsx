@@ -1,22 +1,71 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 export function RefreshButton() {
+  const router = useRouter();
   const [isSyncing, setIsSyncing] = useState(false);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Clean up polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, []);
+
+  const stopPolling = useCallback(() => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  }, []);
+
+  const startPolling = useCallback(() => {
+    stopPolling();
+    pollRef.current = setInterval(async () => {
+      try {
+        const res = await fetch("/api/health");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.phase === "idle" || data.phase === "ready") {
+          stopPolling();
+          setIsSyncing(false);
+          toast.success("Sync complete");
+          router.refresh();
+        }
+      } catch {
+        // Polling failure — keep trying silently
+      }
+    }, 3000);
+  }, [stopPolling, router]);
 
   const handleRefresh = async () => {
     if (isSyncing) return;
     setIsSyncing(true);
 
     try {
-      await fetch("/api/sync", { method: "POST" });
-      // Wait a bit then reload data
-      setTimeout(() => {
+      const res = await fetch("/api/sync", { method: "POST" });
+
+      if (res.status === 409) {
+        toast.warning("Sync already in progress");
+        // Still poll for completion
+        startPolling();
+        return;
+      }
+
+      if (!res.ok) {
+        toast.error("Couldn't start sync");
         setIsSyncing(false);
-        window.location.reload();
-      }, 3000);
+        return;
+      }
+
+      toast("Sync started");
+      startPolling();
     } catch {
+      toast.error("Couldn't start sync");
       setIsSyncing(false);
     }
   };

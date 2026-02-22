@@ -39,6 +39,8 @@ export function BottomTabBar({ counts }: BottomTabBarProps) {
             <Link
               key={tab.href}
               href={tab.href}
+              aria-current={isActive ? "page" : undefined}
+              aria-label={count > 0 ? `${tab.label}, ${count} items` : undefined}
               className={`relative flex min-w-0 flex-1 flex-col items-center gap-0.5 px-1 py-2 text-[10px] font-medium transition-colors ${
                 isActive
                   ? "text-primary"

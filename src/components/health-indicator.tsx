@@ -27,7 +27,7 @@ export function HealthIndicator() {
         const data: HealthData = await res.json();
         setHealth(data);
       } catch {
-        // ignore
+        // Silent: polling failures shouldn't toast every 10s; the status dot already shows degraded state
       }
     };
 

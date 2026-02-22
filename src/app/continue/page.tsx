@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { PosterImage } from "@/components/poster-image";
 import { ProgressBar } from "@/components/progress-bar";
 import { useSyncReady } from "@/hooks/use-sync-ready";
@@ -36,7 +37,7 @@ export default function ContinueWatchingPage() {
         const data = await res.json();
         setItems(data.items);
       } catch {
-        // ignore
+        toast.error("Couldn't load continue watching data");
       } finally {
         setLoading(false);
       }
