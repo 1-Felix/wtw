@@ -4,6 +4,7 @@ const envSchema = z.object({
   // Required — Jellyfin
   JELLYFIN_URL: z.url().describe("Jellyfin server URL"),
   JELLYFIN_API_KEY: z.string().min(1).describe("Jellyfin API key"),
+  JELLYFIN_USER_ID: z.string().min(1).describe("Jellyfin user ID (needed for watch status)"),
 
   // Optional — Sonarr
   SONARR_URL: z.url().optional().describe("Sonarr server URL"),

@@ -30,6 +30,21 @@ export default function AlmostReadyPage() {
       if (config.hideWatched && isSeasonWatched(season)) continue;
       const verdict = evaluateSeason(season, series);
       if (verdict.status === "almost-ready") {
+        const episodes = season.episodes.map((ep) => ({
+          episodeNumber: ep.episodeNumber,
+          title: ep.title,
+          hasFile: ep.hasFile,
+          audioLanguages: ep.audioStreams.map((s) => s.language),
+          isWatched: ep.isWatched,
+          playbackProgress: ep.playbackProgress,
+          lastPlayed: ep.lastPlayed,
+        }));
+        const watchedEpisodes = season.episodes.filter((ep) => ep.isWatched).length;
+        const lastPlayedAt = season.episodes.reduce<string | null>((max, ep) => {
+          if (!ep.lastPlayed) return max;
+          if (!max) return ep.lastPlayed;
+          return ep.lastPlayed > max ? ep.lastPlayed : max;
+        }, null);
         almostReadySeasons.push({
           seriesId: series.id,
           seriesTitle: series.title,
@@ -39,12 +54,9 @@ export default function AlmostReadyPage() {
           posterImageId: series.posterImageId,
           dateAdded: series.dateAdded,
           verdict,
-          episodes: season.episodes.map((ep) => ({
-            episodeNumber: ep.episodeNumber,
-            title: ep.title,
-            hasFile: ep.hasFile,
-            audioLanguages: ep.audioStreams.map((s) => s.language),
-          })),
+          episodes,
+          watchedEpisodes,
+          lastPlayedAt,
         });
       }
     }

@@ -11,6 +11,10 @@ services:
       # --- Required: Jellyfin ---
       JELLYFIN_URL: "http://jellyfin:8096"
       JELLYFIN_API_KEY: "your-jellyfin-api-key"
+      # Find your user ID by running:
+      #   curl http://<jellyfin-url>/Users?api_key=<your-api-key>
+      # and copying the "Id" field for your user.
+      JELLYFIN_USER_ID: "your-jellyfin-user-id"
 
       # --- Optional: Sonarr ---
       # SONARR_URL: "http://sonarr:8989"

@@ -68,6 +68,7 @@ services:
     environment:
       JELLYFIN_URL: "http://jellyfin:8096"
       JELLYFIN_API_KEY: "your-jellyfin-api-key"
+      JELLYFIN_USER_ID: "your-jellyfin-user-id"
 
       # Optional: enable Sonarr integration
       # SONARR_URL: "http://sonarr:8989"
@@ -98,6 +99,7 @@ docker run -d \
   -p 3000:3000 \
   -e JELLYFIN_URL="http://jellyfin:8096" \
   -e JELLYFIN_API_KEY="your-key" \
+  -e JELLYFIN_USER_ID="your-user-id" \
   -v wtw-config:/config \
   ghcr.io/1-felix/wtw:latest
 ```
@@ -110,6 +112,7 @@ docker run -d \
 |---|---|---|---|
 | `JELLYFIN_URL` | Yes | — | Jellyfin server URL |
 | `JELLYFIN_API_KEY` | Yes | — | Jellyfin API key |
+| `JELLYFIN_USER_ID` | Yes | — | Jellyfin user ID (see [Finding your User ID](#finding-your-jellyfin-user-id)) |
 | `SONARR_URL` | No | — | Sonarr server URL |
 | `SONARR_API_KEY` | No | — | Sonarr API key |
 | `RADARR_URL` | No | — | Radarr server URL |
@@ -117,6 +120,16 @@ docker run -d \
 | `SYNC_INTERVAL_MINUTES` | No | `15` | How often to re-sync data from services |
 
 Jellyfin is the only required integration. Sonarr and Radarr are optional — when configured, they provide richer metadata (monitored status, language profiles) that powers additional readiness rules.
+
+### Finding your Jellyfin User ID
+
+wtw needs your Jellyfin user ID to read watch status (played, in-progress, etc.). To find it, run:
+
+```bash
+curl "http://<jellyfin-url>/Users?api_key=<your-api-key>"
+```
+
+This returns a list of users. Find your username and copy the `Id` field — it looks like `5e3236d98db649668657e2248e975db5`.
 
 ### Settings UI
 

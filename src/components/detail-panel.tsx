@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef } from "react";
-import { Check, AlertCircle, ArrowLeft, EyeOff } from "lucide-react";
+import { Check, CircleCheck, Play, AlertCircle, ArrowLeft, EyeOff } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -12,6 +12,27 @@ import { PosterImage } from "./poster-image";
 import { ReadinessBadge } from "./readiness-badge";
 import { ProgressBar } from "./progress-bar";
 import type { ReadinessVerdict, RuleResult } from "@/lib/models/readiness";
+
+// --- Helpers ---
+
+function formatRelativeTime(dateString: string): string {
+  const now = Date.now();
+  const then = new Date(dateString).getTime();
+  const diffMs = now - then;
+  const diffSeconds = Math.floor(diffMs / 1000);
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  const diffHours = Math.floor(diffMinutes / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffDays > 30) {
+    const diffMonths = Math.floor(diffDays / 30);
+    return diffMonths === 1 ? "1 month ago" : `${diffMonths} months ago`;
+  }
+  if (diffDays > 0) return diffDays === 1 ? "1 day ago" : `${diffDays} days ago`;
+  if (diffHours > 0) return diffHours === 1 ? "1 hour ago" : `${diffHours} hours ago`;
+  if (diffMinutes > 0) return diffMinutes === 1 ? "1 minute ago" : `${diffMinutes} minutes ago`;
+  return "just now";
+}
 
 // --- Shared types for items displayed in the panel ---
 
@@ -25,6 +46,8 @@ export interface SeasonDetailItem {
   posterImageId: string | null;
   verdict: ReadinessVerdict;
   episodes: EpisodeInfo[];
+  watchedEpisodes: number;
+  lastPlayedAt: string | null;
   dismissed?: boolean;
 }
 
@@ -33,6 +56,9 @@ export interface EpisodeInfo {
   title: string;
   hasFile: boolean;
   audioLanguages: string[];
+  isWatched: boolean;
+  playbackProgress: number | null;
+  lastPlayed: string | null;
 }
 
 export interface MovieDetailItem {
@@ -206,9 +232,21 @@ function SeasonDetail({ item }: { item: SeasonDetailItem }) {
       </div>
 
       {/* Episodes: x/y */}
-      <p className="text-xs text-muted-foreground">
-        {item.availableEpisodes}/{item.totalEpisodes} episodes available
-      </p>
+      <div className="space-y-0.5">
+        <p className="text-xs text-muted-foreground">
+          {item.availableEpisodes}/{item.totalEpisodes} episodes available
+        </p>
+        {item.watchedEpisodes > 0 && (
+          <p className="text-xs text-muted-foreground">
+            {item.watchedEpisodes}/{item.totalEpisodes} episodes watched
+          </p>
+        )}
+        {item.lastPlayedAt && (
+          <p className="text-xs text-muted-foreground">
+            Last watched {formatRelativeTime(item.lastPlayedAt)}
+          </p>
+        )}
+      </div>
 
       {/* Rule results */}
       <RuleResultsList results={item.verdict.ruleResults} />

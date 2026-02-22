@@ -58,12 +58,14 @@ const jellyfinPlaybackInfoSchema = z.object({
 export class JellyfinClient {
   private baseUrl: string;
   private apiKey: string;
+  private userId: string;
   private timeout: number;
 
-  constructor(baseUrl?: string, apiKey?: string, timeout = 30000) {
+  constructor(baseUrl?: string, apiKey?: string, userId?: string, timeout = 30000) {
     const config = getEnvConfig();
     this.baseUrl = (baseUrl ?? config.JELLYFIN_URL).replace(/\/$/, "");
     this.apiKey = apiKey ?? config.JELLYFIN_API_KEY;
+    this.userId = userId ?? config.JELLYFIN_USER_ID;
     this.timeout = timeout;
   }
 
@@ -146,6 +148,7 @@ export class JellyfinClient {
       jellyfinItemsResponseSchema,
       {
         SeasonId: seasonId,
+        UserId: this.userId,
         Fields:
           "MediaStreams,ProviderIds,UserData,DateCreated,PremiereDate",
       }
@@ -192,6 +195,7 @@ export class JellyfinClient {
         ParentId: libraryId,
         IncludeItemTypes: "Movie",
         Recursive: "true",
+        UserId: this.userId,
         Fields:
           "MediaStreams,ProviderIds,UserData,DateCreated,ImageTags",
         Limit: "10000",
@@ -207,6 +211,7 @@ export class JellyfinClient {
       jellyfinItemsResponseSchema,
       {
         IncludeItemTypes: "Episode,Movie",
+        UserId: this.userId,
         Fields:
           "MediaStreams,ProviderIds,UserData,DateCreated,ImageTags",
         Limit: "100",

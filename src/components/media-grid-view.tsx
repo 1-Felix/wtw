@@ -89,6 +89,8 @@ export interface SeasonItem {
   dateAdded: string;
   verdict: ReadinessVerdict;
   episodes?: EpisodeInfo[];
+  watchedEpisodes?: number;
+  lastPlayedAt?: string | null;
 }
 
 export interface MovieItem {
@@ -188,6 +190,8 @@ export function MediaGridView({
       posterImageId: season.posterImageId,
       verdict: season.verdict,
       episodes: season.episodes ?? [],
+      watchedEpisodes: season.watchedEpisodes ?? 0,
+      lastPlayedAt: season.lastPlayedAt ?? null,
     };
     setSelectedItem(detail);
   }, []);
