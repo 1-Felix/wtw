@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { SeasonCard, MovieCard } from "@/components/media-card";
+import { SeasonCard, SeriesGroupCard, MovieCard } from "@/components/media-card";
 import { SearchFilter } from "@/components/search-filter";
 import { DetailPanel } from "@/components/detail-panel";
 import {
@@ -16,10 +16,12 @@ import {
 import type {
   DetailItem,
   SeasonDetailItem,
+  SeriesGroupDetailItem,
   MovieDetailItem,
   EpisodeInfo,
 } from "@/components/detail-panel";
 import type { ReadinessVerdict } from "@/lib/models/readiness";
+import { filterDismissedFromGroups } from "@/lib/series-grouping";
 
 // --- Sort types ---
 
@@ -35,7 +37,7 @@ export interface SortConfig {
 
 // --- Comparator functions ---
 
-type GridItem = SeasonItem | MovieItem;
+type GridItem = SeasonItem | SeriesGroupItem | MovieItem;
 
 function getTitle(item: GridItem): string {
   return "seriesTitle" in item ? item.seriesTitle : item.title;
@@ -93,6 +95,22 @@ export interface SeasonItem {
   lastPlayedAt?: string | null;
 }
 
+export interface SeriesGroupItem {
+  seriesId: string;
+  seriesTitle: string;
+  posterImageId: string | null;
+  dateAdded: string;
+  seasons: SeasonItem[];
+  seasonCount: number;
+  verdict: ReadinessVerdict;
+}
+
+export function isSeriesGroup(
+  item: SeasonItem | SeriesGroupItem
+): item is SeriesGroupItem {
+  return "seasons" in item;
+}
+
 export interface MovieItem {
   id: string;
   title: string;
@@ -105,7 +123,7 @@ export interface MovieItem {
 }
 
 interface MediaGridViewProps {
-  seasons: SeasonItem[];
+  seasons: (SeasonItem | SeriesGroupItem)[];
   movies: MovieItem[];
   emptyMessage: string;
   emptyAction?: React.ReactNode;
@@ -179,22 +197,47 @@ export function MediaGridView({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  const handleSeasonClick = useCallback((season: SeasonItem) => {
-    const detail: SeasonDetailItem = {
-      type: "season",
-      seriesId: season.seriesId,
-      seriesTitle: season.seriesTitle,
-      seasonNumber: season.seasonNumber,
-      totalEpisodes: season.totalEpisodes,
-      availableEpisodes: season.availableEpisodes,
-      posterImageId: season.posterImageId,
-      verdict: season.verdict,
-      episodes: season.episodes ?? [],
-      watchedEpisodes: season.watchedEpisodes ?? 0,
-      lastPlayedAt: season.lastPlayedAt ?? null,
-    };
-    setSelectedItem(detail);
-  }, []);
+  const handleSeasonClick = useCallback(
+    (item: SeasonItem | SeriesGroupItem) => {
+      if (isSeriesGroup(item)) {
+        const detail: SeriesGroupDetailItem = {
+          type: "series-group",
+          seriesId: item.seriesId,
+          seriesTitle: item.seriesTitle,
+          posterImageId: item.posterImageId,
+          seasons: item.seasons.map((s) => ({
+            seriesId: s.seriesId,
+            seriesTitle: s.seriesTitle,
+            seasonNumber: s.seasonNumber,
+            totalEpisodes: s.totalEpisodes,
+            availableEpisodes: s.availableEpisodes,
+            posterImageId: s.posterImageId,
+            verdict: s.verdict,
+            episodes: s.episodes ?? [],
+            watchedEpisodes: s.watchedEpisodes ?? 0,
+            lastPlayedAt: s.lastPlayedAt ?? null,
+          })),
+        };
+        setSelectedItem(detail);
+      } else {
+        const detail: SeasonDetailItem = {
+          type: "season",
+          seriesId: item.seriesId,
+          seriesTitle: item.seriesTitle,
+          seasonNumber: item.seasonNumber,
+          totalEpisodes: item.totalEpisodes,
+          availableEpisodes: item.availableEpisodes,
+          posterImageId: item.posterImageId,
+          verdict: item.verdict,
+          episodes: item.episodes ?? [],
+          watchedEpisodes: item.watchedEpisodes ?? 0,
+          lastPlayedAt: item.lastPlayedAt ?? null,
+        };
+        setSelectedItem(detail);
+      }
+    },
+    []
+  );
 
   const handleMovieClick = useCallback((movie: MovieItem) => {
     const detail: MovieDetailItem = {
@@ -216,24 +259,51 @@ export function MediaGridView({
 
   const handleDismiss = useCallback(
     (mediaId: string, title: string) => {
-      setLocalDismissedIds((prev) => new Set(prev).add(mediaId));
+      // Check if this is a grouped series dismiss (mediaId is a seriesId)
+      const groupItem = seasons.find(
+        (s) => isSeriesGroup(s) && s.seriesId === mediaId
+      );
+      const isGroupDismiss = groupItem && isSeriesGroup(groupItem);
 
-      fetch(`/api/media/${mediaId}/dismiss`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title }),
-      })
-        .then((res) => {
+      // For groups, collect all individual season keys
+      const dismissKeys = isGroupDismiss
+        ? groupItem.seasons.map(
+            (s) => `${groupItem.seriesId}-s${s.seasonNumber}`
+          )
+        : [mediaId];
+
+      // Also add the group's seriesId to dismissed set so the group card hides
+      const allIdsToHide = isGroupDismiss
+        ? [mediaId, ...dismissKeys]
+        : [mediaId];
+
+      // Optimistically hide
+      setLocalDismissedIds((prev) => {
+        const next = new Set(prev);
+        for (const id of allIdsToHide) next.add(id);
+        return next;
+      });
+
+      // POST dismiss for each key
+      const dismissPromises = dismissKeys.map((key) =>
+        fetch(`/api/media/${key}/dismiss`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title }),
+        }).then((res) => {
           if (!res.ok) throw new Error("dismiss failed");
         })
-        .catch(() => {
-          setLocalDismissedIds((prev) => {
-            const next = new Set(prev);
-            next.delete(mediaId);
-            return next;
-          });
-          toast.error("Couldn't dismiss item — try again");
+      );
+
+      Promise.all(dismissPromises).catch(() => {
+        // Revert all on failure
+        setLocalDismissedIds((prev) => {
+          const next = new Set(prev);
+          for (const id of allIdsToHide) next.delete(id);
+          return next;
         });
+        toast.error("Couldn't dismiss item — try again");
+      });
 
       let undoInvoked = false;
 
@@ -244,25 +314,39 @@ export function MediaGridView({
           onClick: () => {
             undoInvoked = true;
 
+            // Restore locally
             setLocalDismissedIds((prev) => {
               const next = new Set(prev);
-              next.delete(mediaId);
+              for (const id of allIdsToHide) next.delete(id);
               return next;
             });
 
-            fetch(`/api/media/${mediaId}/dismiss`, { method: "DELETE" })
-              .then((res) => {
-                if (res.ok) {
+            // DELETE dismiss for each key
+            const undoPromises = dismissKeys.map((key) =>
+              fetch(`/api/media/${key}/dismiss`, { method: "DELETE" })
+            );
+
+            Promise.all(undoPromises)
+              .then((responses) => {
+                if (responses.every((r) => r.ok)) {
                   toast.success("Item restored");
                   router.refresh();
                 } else {
-                  // Undo failed — re-dismiss locally so UI stays consistent with server
-                  setLocalDismissedIds((prev) => new Set(prev).add(mediaId));
+                  // Undo failed — re-dismiss
+                  setLocalDismissedIds((prev) => {
+                    const next = new Set(prev);
+                    for (const id of allIdsToHide) next.add(id);
+                    return next;
+                  });
                   toast.error("Couldn't restore item");
                 }
               })
               .catch(() => {
-                setLocalDismissedIds((prev) => new Set(prev).add(mediaId));
+                setLocalDismissedIds((prev) => {
+                  const next = new Set(prev);
+                  for (const id of allIdsToHide) next.add(id);
+                  return next;
+                });
                 toast.error("Couldn't restore item");
               });
           },
@@ -275,13 +359,12 @@ export function MediaGridView({
         },
       });
     },
-    [router]
+    [router, seasons]
   );
 
-  // Filter out optimistically dismissed items
-  const visibleSeasons = seasons.filter(
-    (s) => !localDismissedIds.has(`${s.seriesId}-s${s.seasonNumber}`)
-  );
+  // Filter out dismissed items and re-evaluate groups.
+  // If a group drops to 1 visible season it's unwrapped to a plain SeasonItem.
+  const visibleSeasons = filterDismissedFromGroups(seasons, localDismissedIds);
   const visibleMovies = movies.filter(
     (m) => !localDismissedIds.has(m.id)
   );
@@ -384,22 +467,47 @@ export function MediaGridView({
                 Series
               </h3>
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 tv:grid-cols-7 tv:gap-6">
-                {filteredSeasons.map((item) => (
-                  <button
-                    key={`${item.seriesId}-s${item.seasonNumber}`}
-                    onClick={() => handleSeasonClick(item)}
-                    className="cursor-pointer text-left"
-                  >
-                    <SeasonCard
-                      seriesTitle={item.seriesTitle}
-                      seasonNumber={item.seasonNumber}
-                      totalEpisodes={item.totalEpisodes}
-                      availableEpisodes={item.availableEpisodes}
-                      posterImageId={item.posterImageId}
-                      verdict={item.verdict}
-                    />
-                  </button>
-                ))}
+                {filteredSeasons.map((item) =>
+                  isSeriesGroup(item) ? (
+                    <button
+                      key={`group-${item.seriesId}`}
+                      onClick={() => handleSeasonClick(item)}
+                      className="cursor-pointer text-left"
+                    >
+                      <SeriesGroupCard
+                        seriesTitle={item.seriesTitle}
+                        seasonNumbers={item.seasons.map(
+                          (s) => s.seasonNumber
+                        )}
+                        totalEpisodes={item.seasons.reduce(
+                          (sum, s) => sum + s.totalEpisodes,
+                          0
+                        )}
+                        availableEpisodes={item.seasons.reduce(
+                          (sum, s) => sum + s.availableEpisodes,
+                          0
+                        )}
+                        posterImageId={item.posterImageId}
+                        verdict={item.verdict}
+                      />
+                    </button>
+                  ) : (
+                    <button
+                      key={`${item.seriesId}-s${item.seasonNumber}`}
+                      onClick={() => handleSeasonClick(item)}
+                      className="cursor-pointer text-left"
+                    >
+                      <SeasonCard
+                        seriesTitle={item.seriesTitle}
+                        seasonNumber={item.seasonNumber}
+                        totalEpisodes={item.totalEpisodes}
+                        availableEpisodes={item.availableEpisodes}
+                        posterImageId={item.posterImageId}
+                        verdict={item.verdict}
+                      />
+                    </button>
+                  )
+                )}
               </div>
             </section>
           )}

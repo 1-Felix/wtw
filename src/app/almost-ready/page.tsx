@@ -7,6 +7,7 @@ import { evaluateSeason, evaluateMovie } from "@/lib/rules/evaluator";
 import { getDismissedIds } from "@/lib/db/dismissed";
 import { getRulesConfig } from "@/lib/config/rules";
 import { isSeasonWatched } from "@/lib/models/media";
+import { groupSeasonsBySeries } from "@/lib/series-grouping";
 
 export const dynamic = "force-dynamic";
 
@@ -89,7 +90,7 @@ export default function AlmostReadyPage() {
 
         <Suspense>
           <MediaGridView
-            seasons={almostReadySeasons}
+            seasons={groupSeasonsBySeries(almostReadySeasons)}
             movies={almostReadyMovies}
             sort={SORT_ALMOST_READY}
             emptyMessage="No items are almost ready."

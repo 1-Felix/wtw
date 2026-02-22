@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useRef } from "react";
-import { Check, CircleCheck, Play, AlertCircle, ArrowLeft, EyeOff } from "lucide-react";
+import { useCallback, useRef, useState } from "react";
+import { Check, ChevronDown, CircleCheck, Play, AlertCircle, ArrowLeft, EyeOff } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -12,27 +12,7 @@ import { PosterImage } from "./poster-image";
 import { ReadinessBadge } from "./readiness-badge";
 import { ProgressBar } from "./progress-bar";
 import type { ReadinessVerdict, RuleResult } from "@/lib/models/readiness";
-
-// --- Helpers ---
-
-function formatRelativeTime(dateString: string): string {
-  const now = Date.now();
-  const then = new Date(dateString).getTime();
-  const diffMs = now - then;
-  const diffSeconds = Math.floor(diffMs / 1000);
-  const diffMinutes = Math.floor(diffSeconds / 60);
-  const diffHours = Math.floor(diffMinutes / 60);
-  const diffDays = Math.floor(diffHours / 24);
-
-  if (diffDays > 30) {
-    const diffMonths = Math.floor(diffDays / 30);
-    return diffMonths === 1 ? "1 month ago" : `${diffMonths} months ago`;
-  }
-  if (diffDays > 0) return diffDays === 1 ? "1 day ago" : `${diffDays} days ago`;
-  if (diffHours > 0) return diffHours === 1 ? "1 hour ago" : `${diffHours} hours ago`;
-  if (diffMinutes > 0) return diffMinutes === 1 ? "1 minute ago" : `${diffMinutes} minutes ago`;
-  return "just now";
-}
+import { formatRelativeTime } from "@/lib/utils";
 
 // --- Shared types for items displayed in the panel ---
 
@@ -73,7 +53,18 @@ export interface MovieDetailItem {
   dismissed?: boolean;
 }
 
-export type DetailItem = SeasonDetailItem | MovieDetailItem;
+export interface SeriesGroupDetailItem {
+  type: "series-group";
+  seriesId: string;
+  seriesTitle: string;
+  posterImageId: string | null;
+  seasons: Omit<SeasonDetailItem, "type">[];
+}
+
+export type DetailItem =
+  | SeasonDetailItem
+  | SeriesGroupDetailItem
+  | MovieDetailItem;
 
 // --- Panel component ---
 
@@ -121,22 +112,34 @@ export function DetailPanel({ item, onClose, onDismiss }: DetailPanelProps) {
   const handleDismiss = useCallback(() => {
     if (!item || !onDismiss) return;
 
-    const mediaId = item.type === "season"
-      ? `${item.seriesId}-s${item.seasonNumber}`
-      : item.id;
-    const title = item.type === "season"
-      ? `${item.seriesTitle} S${item.seasonNumber}`
-      : item.title;
-
-    onDismiss(mediaId, title);
+    if (item.type === "season") {
+      onDismiss(
+        `${item.seriesId}-s${item.seasonNumber}`,
+        `${item.seriesTitle} S${item.seasonNumber}`
+      );
+    } else if (item.type === "series-group") {
+      // Dismiss using the seriesId — the grid view handles expanding
+      // this into individual season dismiss keys
+      onDismiss(item.seriesId, item.seriesTitle);
+    } else {
+      onDismiss(item.id, item.title);
+    }
     onClose();
   }, [item, onDismiss, onClose]);
 
   const panelTitle = item
     ? item.type === "season"
       ? `${item.seriesTitle} — Season ${item.seasonNumber}`
-      : item.title
+      : item.type === "series-group"
+        ? item.seriesTitle
+        : item.title
     : "Details";
+
+  const isDismissed = item
+    ? item.type === "series-group"
+      ? false
+      : item.dismissed === true
+    : false;
 
   return (
     <Sheet open={!!item} onOpenChange={(open) => { if (!open) onClose(); }}>
@@ -178,13 +181,15 @@ export function DetailPanel({ item, onClose, onDismiss }: DetailPanelProps) {
             <div className="flex-1 space-y-6 p-4">
               {item.type === "season" ? (
                 <SeasonDetail item={item} />
+              ) : item.type === "series-group" ? (
+                <SeriesGroupDetail item={item} />
               ) : (
                 <MovieDetail item={item} />
               )}
             </div>
 
             {/* Footer — Dismiss button */}
-            {onDismiss && !item.dismissed && (
+            {onDismiss && !isDismissed && (
               <div className="sticky bottom-0 border-t border-border bg-background px-4 py-3">
                 <Button
                   variant="outline"
@@ -192,11 +197,11 @@ export function DetailPanel({ item, onClose, onDismiss }: DetailPanelProps) {
                   onClick={handleDismiss}
                 >
                   <EyeOff className="h-4 w-4" />
-                  Dismiss
+                  Dismiss{item.type === "series-group" ? " All Seasons" : ""}
                 </Button>
               </div>
             )}
-            {item.dismissed && (
+            {isDismissed && (
               <div className="sticky bottom-0 border-t border-border bg-background px-4 py-3">
                 <p className="text-center text-xs text-muted-foreground">
                   This item has been dismissed.
@@ -259,7 +264,9 @@ function SeasonDetail({ item }: { item: SeasonDetailItem }) {
           </h4>
           <div className="space-y-1">
             {item.episodes.map((ep) => {
-              const isInProgress = !ep.isWatched && ep.playbackProgress != null && ep.playbackProgress > 0;
+              const progressPercent = (!ep.isWatched && ep.playbackProgress != null && ep.playbackProgress > 0)
+                ? Math.round(ep.playbackProgress * 100)
+                : null;
               return (
                 <div
                   key={ep.episodeNumber}
@@ -279,19 +286,19 @@ function SeasonDetail({ item }: { item: SeasonDetailItem }) {
                       </span>
                     )}
                   </div>
-                  {isInProgress && (
+                  {progressPercent != null && (
                     <div className="px-3 pb-1.5">
                       <div
                         role="progressbar"
-                        aria-valuenow={Math.round(ep.playbackProgress! * 100)}
+                        aria-valuenow={progressPercent}
                         aria-valuemin={0}
                         aria-valuemax={100}
-                        aria-label={`${Math.round(ep.playbackProgress! * 100)}% watched`}
+                        aria-label={`${progressPercent}% watched`}
                         className="h-1 w-full overflow-hidden rounded-full bg-muted"
                       >
                         <div
                           className="h-full rounded-full bg-primary/60"
-                          style={{ width: `${Math.round(ep.playbackProgress! * 100)}%` }}
+                          style={{ width: `${progressPercent}%` }}
                         />
                       </div>
                     </div>
@@ -302,6 +309,180 @@ function SeasonDetail({ item }: { item: SeasonDetailItem }) {
           </div>
         </section>
       )}
+    </>
+  );
+}
+
+// --- Series group detail ---
+
+function SeriesGroupDetail({ item }: { item: SeriesGroupDetailItem }) {
+  const [expandedSeasons, setExpandedSeasons] = useState<Set<number>>(
+    () => new Set()
+  );
+
+  const toggleSeason = useCallback((seasonNumber: number) => {
+    setExpandedSeasons((prev) => {
+      const next = new Set(prev);
+      if (next.has(seasonNumber)) {
+        next.delete(seasonNumber);
+      } else {
+        next.add(seasonNumber);
+      }
+      return next;
+    });
+  }, []);
+
+  const totalEpisodes = item.seasons.reduce(
+    (sum, s) => sum + s.totalEpisodes,
+    0
+  );
+  const availableEpisodes = item.seasons.reduce(
+    (sum, s) => sum + s.availableEpisodes,
+    0
+  );
+
+  return (
+    <>
+      {/* Poster + title */}
+      <div className="flex gap-4">
+        <div className="relative h-36 w-24 shrink-0 overflow-hidden rounded-md">
+          <PosterImage
+            itemId={item.posterImageId}
+            title={item.seriesTitle}
+            className="h-full w-full"
+          />
+        </div>
+        <div className="min-w-0 flex-1 space-y-2">
+          <h3 className="text-base font-semibold text-foreground">
+            {item.seriesTitle}
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            {item.seasons.length} seasons
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {availableEpisodes}/{totalEpisodes} episodes available
+          </p>
+        </div>
+      </div>
+
+      {/* Season accordion */}
+      <section>
+        <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Seasons
+        </h4>
+        <div className="space-y-2">
+          {item.seasons.map((season) => {
+            const isExpanded = expandedSeasons.has(season.seasonNumber);
+            return (
+              <div
+                key={season.seasonNumber}
+                className="overflow-hidden rounded-md border border-border"
+              >
+                {/* Season header — always visible */}
+                <button
+                  onClick={() => toggleSeason(season.seasonNumber)}
+                  className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-muted/30"
+                >
+                  <ChevronDown
+                    className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${
+                      isExpanded ? "rotate-0" : "-rotate-90"
+                    }`}
+                  />
+                  <span className="flex-1 text-sm font-medium text-foreground">
+                    Season {season.seasonNumber}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {season.availableEpisodes}/{season.totalEpisodes} episodes
+                  </span>
+                  <ReadinessBadge status={season.verdict.status} />
+                </button>
+
+                {/* Expanded content */}
+                {isExpanded && (
+                  <div className="border-t border-border px-3 py-3 space-y-4">
+                    {/* Progress */}
+                    <ProgressBar
+                      value={season.verdict.progressPercent}
+                      label={`${Math.round(season.verdict.progressPercent * 100)}% complete`}
+                    />
+
+                    {/* Watched info */}
+                    {season.watchedEpisodes > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        {season.watchedEpisodes}/{season.totalEpisodes} episodes
+                        watched
+                      </p>
+                    )}
+                    {season.lastPlayedAt && (
+                      <p className="text-xs text-muted-foreground">
+                        Last watched{" "}
+                        {formatRelativeTime(season.lastPlayedAt)}
+                      </p>
+                    )}
+
+                    {/* Rule results */}
+                    <RuleResultsList results={season.verdict.ruleResults} />
+
+                    {/* Episode list */}
+                    {season.episodes.length > 0 && (
+                      <div className="space-y-1">
+                        {season.episodes.map((ep) => {
+                          const isInProgress =
+                            !ep.isWatched &&
+                            ep.playbackProgress != null &&
+                            ep.playbackProgress > 0;
+                          return (
+                            <div
+                              key={ep.episodeNumber}
+                              className="flex flex-col gap-0 rounded-md border border-border/50 bg-surface"
+                            >
+                              <div className="flex items-center gap-3 px-3 py-2">
+                                <span className="w-6 shrink-0 text-center font-mono text-xs text-muted-foreground">
+                                  {String(ep.episodeNumber).padStart(2, "0")}
+                                </span>
+                                <EpisodeStatusIcon episode={ep} />
+                                <span className="min-w-0 flex-1 truncate text-xs text-foreground">
+                                  {ep.title}
+                                </span>
+                                {ep.audioLanguages.length > 0 && (
+                                  <span className="shrink-0 text-[10px] text-muted-foreground">
+                                    {ep.audioLanguages.slice(0, 2).join(", ")}
+                                  </span>
+                                )}
+                              </div>
+                              {isInProgress && (
+                                <div className="px-3 pb-1.5">
+                                  <div
+                                    role="progressbar"
+                                    aria-valuenow={Math.round(
+                                      ep.playbackProgress! * 100
+                                    )}
+                                    aria-valuemin={0}
+                                    aria-valuemax={100}
+                                    aria-label={`${Math.round(ep.playbackProgress! * 100)}% watched`}
+                                    className="h-1 w-full overflow-hidden rounded-full bg-muted"
+                                  >
+                                    <div
+                                      className="h-full rounded-full bg-primary/60"
+                                      style={{
+                                        width: `${Math.round(ep.playbackProgress! * 100)}%`,
+                                      }}
+                                    />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </section>
     </>
   );
 }

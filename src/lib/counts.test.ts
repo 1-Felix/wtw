@@ -132,10 +132,10 @@ const mockCache: CacheData = {
 };
 
 describe("getNavCounts", () => {
-  it("counts ready items (seasons 1,2 + movie m1)", () => {
+  it("counts ready items (seasons 1,2 grouped + movie m1)", () => {
     const counts = getNavCounts();
-    // 2 ready seasons + 1 ready movie
-    expect(counts.ready).toBe(3);
+    // 2 ready seasons of same series grouped as 1 + 1 ready movie = 2
+    expect(counts.ready).toBe(2);
   });
 
   it("counts almost-ready items (season 3 + movie m3)", () => {

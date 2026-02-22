@@ -2,6 +2,8 @@ import { getCache } from "@/lib/sync/cache";
 import { evaluateSeason, evaluateMovie } from "@/lib/rules/evaluator";
 import { getRulesConfig } from "@/lib/config/rules";
 import { isSeasonWatched } from "@/lib/models/media";
+import { groupSeasonsBySeries } from "@/lib/series-grouping";
+import type { SeasonItem } from "@/components/media-grid-view";
 
 export interface NavCounts {
   ready: number;
@@ -18,22 +20,45 @@ export function getNavCounts(): NavCounts {
   const cache = getCache();
 
   const config = getRulesConfig();
-  let ready = 0;
-  let almostReady = 0;
   let continueCount = 0;
 
-  // Count ready / almost-ready seasons
+  // Collect ready / almost-ready seasons, then group by series
+  const readySeasons: SeasonItem[] = [];
+  const almostReadySeasons: SeasonItem[] = [];
+
   for (const series of cache.series) {
     for (const season of series.seasons) {
       if (config.hideWatched && isSeasonWatched(season)) continue;
       const verdict = evaluateSeason(season, series);
       if (verdict.status === "ready") {
-        ready++;
+        readySeasons.push({
+          seriesId: series.id,
+          seriesTitle: series.title,
+          seasonNumber: season.seasonNumber,
+          totalEpisodes: season.totalEpisodes,
+          availableEpisodes: season.availableEpisodes,
+          posterImageId: series.posterImageId,
+          dateAdded: series.dateAdded,
+          verdict,
+        });
       } else if (verdict.status === "almost-ready") {
-        almostReady++;
+        almostReadySeasons.push({
+          seriesId: series.id,
+          seriesTitle: series.title,
+          seasonNumber: season.seasonNumber,
+          totalEpisodes: season.totalEpisodes,
+          availableEpisodes: season.availableEpisodes,
+          posterImageId: series.posterImageId,
+          dateAdded: series.dateAdded,
+          verdict,
+        });
       }
     }
   }
+
+  // Group by series so multi-season series count as 1
+  let ready = groupSeasonsBySeries(readySeasons).length;
+  let almostReady = groupSeasonsBySeries(almostReadySeasons).length;
 
   // Count ready / almost-ready movies (skip watched when enabled)
   for (const movie of cache.movies) {
