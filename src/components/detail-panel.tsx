@@ -258,29 +258,47 @@ function SeasonDetail({ item }: { item: SeasonDetailItem }) {
             Episodes
           </h4>
           <div className="space-y-1">
-            {item.episodes.map((ep) => (
-              <div
-                key={ep.episodeNumber}
-                className="flex items-center gap-3 rounded-md border border-border/50 bg-surface px-3 py-2"
-              >
-                <span className="w-6 shrink-0 text-center font-mono text-xs text-muted-foreground">
-                  {String(ep.episodeNumber).padStart(2, "0")}
-                </span>
-                {ep.hasFile ? (
-                  <Check className="h-3.5 w-3.5 shrink-0 text-primary" />
-                ) : (
-                  <AlertCircle className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                )}
-                <span className="min-w-0 flex-1 truncate text-xs text-foreground">
-                  {ep.title}
-                </span>
-                {ep.audioLanguages.length > 0 && (
-                  <span className="shrink-0 text-[10px] text-muted-foreground">
-                    {ep.audioLanguages.slice(0, 2).join(", ")}
-                  </span>
-                )}
-              </div>
-            ))}
+            {item.episodes.map((ep) => {
+              const isInProgress = !ep.isWatched && ep.playbackProgress != null && ep.playbackProgress > 0;
+              return (
+                <div
+                  key={ep.episodeNumber}
+                  className="flex flex-col gap-0 rounded-md border border-border/50 bg-surface"
+                >
+                  <div className="flex items-center gap-3 px-3 py-2">
+                    <span className="w-6 shrink-0 text-center font-mono text-xs text-muted-foreground">
+                      {String(ep.episodeNumber).padStart(2, "0")}
+                    </span>
+                    <EpisodeStatusIcon episode={ep} />
+                    <span className="min-w-0 flex-1 truncate text-xs text-foreground">
+                      {ep.title}
+                    </span>
+                    {ep.audioLanguages.length > 0 && (
+                      <span className="shrink-0 text-[10px] text-muted-foreground">
+                        {ep.audioLanguages.slice(0, 2).join(", ")}
+                      </span>
+                    )}
+                  </div>
+                  {isInProgress && (
+                    <div className="px-3 pb-1.5">
+                      <div
+                        role="progressbar"
+                        aria-valuenow={Math.round(ep.playbackProgress! * 100)}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-label={`${Math.round(ep.playbackProgress! * 100)}% watched`}
+                        className="h-1 w-full overflow-hidden rounded-full bg-muted"
+                      >
+                        <div
+                          className="h-full rounded-full bg-primary/60"
+                          style={{ width: `${Math.round(ep.playbackProgress! * 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </section>
       )}
@@ -347,6 +365,21 @@ function MovieDetail({ item }: { item: MovieDetailItem }) {
       )}
     </>
   );
+}
+
+// --- Episode status icon ---
+
+function EpisodeStatusIcon({ episode }: { episode: EpisodeInfo }) {
+  if (episode.isWatched) {
+    return <CircleCheck className="h-3.5 w-3.5 shrink-0 text-primary" />;
+  }
+  if (episode.playbackProgress != null && episode.playbackProgress > 0) {
+    return <Play className="h-3.5 w-3.5 shrink-0 text-primary/60" />;
+  }
+  if (episode.hasFile) {
+    return <Check className="h-3.5 w-3.5 shrink-0 text-primary" />;
+  }
+  return <AlertCircle className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />;
 }
 
 // --- Rule results list ---
