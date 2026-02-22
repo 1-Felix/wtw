@@ -34,6 +34,9 @@ COPY --from=builder /app/.next/static ./.next/static
 # Create config directory for SQLite database and optional rules.json
 RUN mkdir -p /config && chown nextjs:nodejs /config
 
+# Create Next.js cache directory for image optimization
+RUN mkdir -p .next/cache && chown nextjs:nodejs .next/cache
+
 USER nextjs
 
 EXPOSE 3000
