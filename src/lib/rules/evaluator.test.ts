@@ -11,6 +11,7 @@ vi.mock("@/lib/config/rules", () => ({
     almostReadyThreshold: 0.8,
     compositionMode: "and" as const,
     overrides: {},
+    hideWatched: true,
   })),
   getSeriesOverride: vi.fn(() => undefined),
 }));
@@ -22,6 +23,7 @@ afterEach(() => {
     almostReadyThreshold: 0.8,
     compositionMode: "and" as const,
     overrides: {},
+    hideWatched: true,
   });
 });
 
@@ -124,6 +126,7 @@ describe("evaluateSeason", () => {
       almostReadyThreshold: 0.95,
       compositionMode: "and" as const,
       overrides: {},
+      hideWatched: true,
     });
 
     // 9/10 episodes = 0.9 progress, below 0.95 threshold
@@ -180,6 +183,7 @@ describe("evaluateSeason", () => {
       almostReadyThreshold: 0.8,
       compositionMode: "or" as const,
       overrides: {},
+      hideWatched: true,
     });
 
     // Season with wrong language but complete episodes
@@ -208,6 +212,7 @@ describe("evaluateSeason", () => {
       almostReadyThreshold: 0.8,
       compositionMode: "and" as const,
       overrides: {},
+      hideWatched: true,
     });
 
     const season: Season = {
