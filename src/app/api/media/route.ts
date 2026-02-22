@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getCache } from "@/lib/sync/cache";
 import { evaluateSeason, evaluateMovie } from "@/lib/rules/evaluator";
 import { getDismissedIds } from "@/lib/db/dismissed";
+import { getRulesConfig } from "@/lib/config/rules";
+import { isSeasonWatched } from "@/lib/models/media";
 import type { ReadinessVerdict } from "@/lib/models/readiness";
 
 interface SeasonWithVerdict {
@@ -37,6 +39,7 @@ export async function GET() {
     dismissedIds = new Set();
   }
 
+  const config = getRulesConfig();
   const readySeasons: SeasonWithVerdict[] = [];
   const almostReadySeasons: SeasonWithVerdict[] = [];
   const readyMovies: MovieWithVerdict[] = [];
@@ -44,6 +47,7 @@ export async function GET() {
 
   for (const series of cache.series) {
     for (const season of series.seasons) {
+      if (config.hideWatched && isSeasonWatched(season)) continue;
       const verdict = evaluateSeason(season, series);
       const seasonKey = `${series.id}-s${season.seasonNumber}`;
       const item: SeasonWithVerdict = {
@@ -65,7 +69,7 @@ export async function GET() {
   }
 
   for (const movie of cache.movies) {
-    if (movie.isWatched) continue;
+    if (config.hideWatched && movie.isWatched) continue;
     const verdict = evaluateMovie(movie);
     const languages = movie.audioStreams.map((s) => s.language);
     const item: MovieWithVerdict = {

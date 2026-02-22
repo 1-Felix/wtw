@@ -33,6 +33,9 @@ const rulesConfigSchema = z.object({
 
   /** Per-series overrides keyed by series title or TVDB ID */
   overrides: z.record(z.string(), ruleOverrideSchema).default({}),
+
+  /** Whether to hide fully-watched items from dashboard views */
+  hideWatched: z.boolean().default(true),
 });
 
 export { rulesConfigSchema, ruleOverrideSchema };
@@ -151,6 +154,9 @@ function loadFromDatabase(): RulesConfig | null {
     if (settings["overrides"] !== undefined) {
       partial.overrides = settings["overrides"];
     }
+    if (settings["hideWatched"] !== undefined) {
+      partial.hideWatched = settings["hideWatched"];
+    }
 
     const result = rulesConfigSchema.safeParse(partial);
     if (result.success) {
@@ -205,6 +211,7 @@ function importToDatabase(config: RulesConfig): void {
       "almostReadyThreshold": config.almostReadyThreshold,
       "compositionMode": config.compositionMode,
       "overrides": config.overrides,
+      "hideWatched": config.hideWatched,
     };
 
     setAllSettings(settings);

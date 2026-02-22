@@ -18,6 +18,7 @@ export const rulesConfigSchema = z.object({
       languageTarget: z.string().optional(),
     })
   ),
+  hideWatched: z.boolean(),
 });
 
 export const webhookSchema = z.object({

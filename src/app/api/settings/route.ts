@@ -26,6 +26,7 @@ const settingsUpdateSchema = z.object({
       })
     )
     .optional(),
+  hideWatched: z.boolean().optional(),
 });
 
 /**
@@ -52,6 +53,7 @@ export async function GET() {
       almostReadyThreshold: raw["almostReadyThreshold"] ?? 0.8,
       compositionMode: raw["compositionMode"] ?? "and",
       overrides: raw["overrides"] ?? {},
+      hideWatched: raw["hideWatched"] ?? true,
     };
 
     const result = rulesConfigSchema.safeParse(config);
@@ -116,6 +118,9 @@ export async function PUT(request: Request) {
     if (update.overrides !== undefined) {
       merged["overrides"] = update.overrides;
     }
+    if (update.hideWatched !== undefined) {
+      merged["hideWatched"] = update.hideWatched;
+    }
 
     // Persist merged settings
     setAllSettings(merged);
@@ -134,6 +139,7 @@ export async function PUT(request: Request) {
       almostReadyThreshold: merged["almostReadyThreshold"] ?? 0.8,
       compositionMode: merged["compositionMode"] ?? "and",
       overrides: merged["overrides"] ?? {},
+      hideWatched: merged["hideWatched"] ?? true,
     };
 
     return NextResponse.json(updatedConfig);

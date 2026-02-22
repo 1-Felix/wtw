@@ -1,5 +1,7 @@
 import { getCache } from "@/lib/sync/cache";
 import { evaluateSeason, evaluateMovie } from "@/lib/rules/evaluator";
+import { getRulesConfig } from "@/lib/config/rules";
+import { isSeasonWatched } from "@/lib/models/media";
 
 export interface NavCounts {
   ready: number;
@@ -15,6 +17,7 @@ export interface NavCounts {
 export function getNavCounts(): NavCounts {
   const cache = getCache();
 
+  const config = getRulesConfig();
   let ready = 0;
   let almostReady = 0;
   let continueCount = 0;
@@ -22,6 +25,7 @@ export function getNavCounts(): NavCounts {
   // Count ready / almost-ready seasons
   for (const series of cache.series) {
     for (const season of series.seasons) {
+      if (config.hideWatched && isSeasonWatched(season)) continue;
       const verdict = evaluateSeason(season, series);
       if (verdict.status === "ready") {
         ready++;
@@ -31,9 +35,9 @@ export function getNavCounts(): NavCounts {
     }
   }
 
-  // Count ready / almost-ready movies (skip watched)
+  // Count ready / almost-ready movies (skip watched when enabled)
   for (const movie of cache.movies) {
-    if (movie.isWatched) continue;
+    if (config.hideWatched && movie.isWatched) continue;
     const verdict = evaluateMovie(movie);
     if (verdict.status === "ready") {
       ready++;

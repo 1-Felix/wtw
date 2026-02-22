@@ -1,6 +1,7 @@
 "use client";
 
 import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
 import type { RulesConfig } from "../schemas";
 
 export function RulesSection({
@@ -56,6 +57,29 @@ export function RulesSection({
           />
         </div>
       ))}
+
+      <Separator className="my-2" />
+
+      <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+        Behavior
+      </h3>
+      <div className="flex items-center justify-between rounded-md border border-border bg-surface p-4">
+        <div>
+          <p className="text-sm font-medium text-foreground">
+            Hide Watched Items
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Exclude fully-watched seasons and movies from dashboard views
+          </p>
+        </div>
+        <Switch
+          size="lg"
+          checked={config.hideWatched}
+          onCheckedChange={() =>
+            onChange({ ...config, hideWatched: !config.hideWatched })
+          }
+        />
+      </div>
     </section>
   );
 }

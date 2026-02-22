@@ -5,6 +5,8 @@ import type { SeasonItem, MovieItem } from "@/components/media-grid-view";
 import { getCache } from "@/lib/sync/cache";
 import { evaluateSeason, evaluateMovie } from "@/lib/rules/evaluator";
 import { getDismissedIds } from "@/lib/db/dismissed";
+import { getRulesConfig } from "@/lib/config/rules";
+import { isSeasonWatched } from "@/lib/models/media";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +19,7 @@ export default function ReadyToWatchPage() {
     dismissedIds = new Set();
   }
 
+  const config = getRulesConfig();
   const readySeasons: SeasonItem[] = [];
   const readyMovies: MovieItem[] = [];
 
@@ -24,6 +27,7 @@ export default function ReadyToWatchPage() {
     for (const season of series.seasons) {
       const seasonKey = `${series.id}-s${season.seasonNumber}`;
       if (dismissedIds.has(seasonKey)) continue;
+      if (config.hideWatched && isSeasonWatched(season)) continue;
       const verdict = evaluateSeason(season, series);
       if (verdict.status === "ready") {
         readySeasons.push({
@@ -47,7 +51,7 @@ export default function ReadyToWatchPage() {
   }
 
   for (const movie of cache.movies) {
-    if (movie.isWatched) continue;
+    if (config.hideWatched && movie.isWatched) continue;
     if (dismissedIds.has(movie.id)) continue;
     const verdict = evaluateMovie(movie);
     if (verdict.status === "ready") {

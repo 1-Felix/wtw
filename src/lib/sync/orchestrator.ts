@@ -2,7 +2,7 @@ import { JellyfinClient } from "@/lib/clients/jellyfin";
 import { SonarrClient } from "@/lib/clients/sonarr";
 import { RadarrClient } from "@/lib/clients/radarr";
 import { getEnvConfig, isSonarrConfigured, isRadarrConfigured } from "@/lib/config/env";
-import { reloadRulesConfig } from "@/lib/config/rules";
+import { reloadRulesConfig, getRulesConfig } from "@/lib/config/rules";
 import { syncJellyfin, type JellyfinSyncResult } from "./jellyfin-sync";
 import { syncSonarr } from "./sonarr-sync";
 import { syncRadarr } from "./radarr-sync";
@@ -22,6 +22,7 @@ import {
 import type { SyncState, ServiceStatus } from "@/lib/models/sync";
 import { createInitialSyncState } from "@/lib/models/sync";
 import { evaluateSeason, evaluateMovie } from "@/lib/rules/evaluator";
+import { isSeasonWatched } from "@/lib/models/media";
 import type { VerdictMap, VerdictEntry } from "@/lib/notifications/transition-detector";
 import { detectTransitions } from "@/lib/notifications/transition-detector";
 import { dispatchNotifications } from "@/lib/notifications/dispatcher";
@@ -219,10 +220,12 @@ function markError(status: ServiceStatus, err: unknown): ServiceStatus {
  */
 function buildVerdictMap(): VerdictMap {
   const cache = getCache();
+  const config = getRulesConfig();
   const map: VerdictMap = new Map();
 
   for (const series of cache.series) {
     for (const season of series.seasons) {
+      if (config.hideWatched && isSeasonWatched(season)) continue;
       const verdict = evaluateSeason(season, series);
       const key = `${series.id}-s${season.seasonNumber}`;
       const entry: VerdictEntry = {
@@ -241,7 +244,7 @@ function buildVerdictMap(): VerdictMap {
   }
 
   for (const movie of cache.movies) {
-    if (movie.isWatched) continue;
+    if (config.hideWatched && movie.isWatched) continue;
     const verdict = evaluateMovie(movie);
     const entry: VerdictEntry = {
       mediaId: movie.id,

@@ -114,3 +114,10 @@ export const movieSchema = z.object({
   inRadarr: z.boolean(),
 });
 export type Movie = z.infer<typeof movieSchema>;
+
+// --- Helpers ---
+
+/** A season is "fully watched" when it has episodes and all are marked watched. */
+export function isSeasonWatched(season: Season): boolean {
+  return season.episodes.length > 0 && season.episodes.every(ep => ep.isWatched);
+}
