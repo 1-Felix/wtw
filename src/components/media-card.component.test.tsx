@@ -31,6 +31,7 @@ function makeRule(
   return {
     passed: true,
     detail: "",
+    compactDetail: "",
     numerator: 0,
     denominator: 0,
     ...overrides,
@@ -88,7 +89,7 @@ describe("SeriesGroupCard", () => {
     expect(badge).toHaveTextContent("ready");
   });
 
-  it("renders progress bar for almost-ready verdict", () => {
+  it("renders progress bar for almost-ready verdict with compact label", () => {
     render(
       <SeriesGroupCard
         {...baseProps}
@@ -96,9 +97,10 @@ describe("SeriesGroupCard", () => {
           status: "almost-ready",
           ruleResults: [
             makeRule({
-              ruleName: "language",
+              ruleName: "language-available",
               passed: false,
-              detail: "Missing English",
+              detail: "8/12 episodes have eng audio",
+              compactDetail: "8/12 eng audio",
               numerator: 8,
               denominator: 12,
             }),
@@ -110,6 +112,7 @@ describe("SeriesGroupCard", () => {
     const bar = screen.getByTestId("progress-bar");
     expect(bar).toBeInTheDocument();
     expect(bar).toHaveAttribute("data-value", "0.88");
+    expect(bar).toHaveTextContent("8/12 eng audio");
   });
 
   it("does not render progress bar for ready verdict", () => {
@@ -117,7 +120,7 @@ describe("SeriesGroupCard", () => {
     expect(screen.queryByTestId("progress-bar")).not.toBeInTheDocument();
   });
 
-  it("renders rule result details for ready items with rules", () => {
+  it("does not render rule result details for ready items", () => {
     render(
       <SeriesGroupCard
         {...baseProps}
@@ -137,7 +140,63 @@ describe("SeriesGroupCard", () => {
       />
     );
     expect(
-      screen.getByText("All episodes available")
+      screen.queryByText("All episodes available")
+    ).not.toBeInTheDocument();
+  });
+
+  it("renders watch progress annotation for ready items", () => {
+    render(
+      <SeriesGroupCard
+        {...baseProps}
+        watchedEpisodes={12}
+      />
+    );
+    expect(
+      screen.getByText("Watched 12/36")
     ).toBeInTheDocument();
+  });
+
+  it("renders language override annotation for ready items", () => {
+    render(
+      <SeriesGroupCard
+        {...baseProps}
+        languageOverride="jpn"
+      />
+    );
+    expect(
+      screen.getByText("jpn audio")
+    ).toBeInTheDocument();
+  });
+
+  it("renders combined annotations when both present", () => {
+    render(
+      <SeriesGroupCard
+        {...baseProps}
+        watchedEpisodes={5}
+        languageOverride="jpn"
+      />
+    );
+    expect(
+      screen.getByText(/Watched 5\/36/)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/jpn audio/)
+    ).toBeInTheDocument();
+  });
+
+  it("does not render annotations when no watch progress and no language override", () => {
+    render(
+      <SeriesGroupCard {...baseProps} />
+    );
+    // Only title, season summary, and episode count should be present
+    expect(screen.queryByText(/Watched/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/audio/)).not.toBeInTheDocument();
+  });
+
+  it("does not render watch progress annotation when watchedEpisodes is 0", () => {
+    render(
+      <SeriesGroupCard {...baseProps} watchedEpisodes={0} />
+    );
+    expect(screen.queryByText(/Watched/)).not.toBeInTheDocument();
   });
 });

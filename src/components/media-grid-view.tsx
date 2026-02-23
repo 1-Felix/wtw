@@ -93,6 +93,8 @@ export interface SeasonItem {
   episodes?: EpisodeInfo[];
   watchedEpisodes?: number;
   lastPlayedAt?: string | null;
+  /** Non-default language target (only set when a per-series override differs from global config) */
+  languageOverride?: string;
 }
 
 export interface SeriesGroupItem {
@@ -103,6 +105,8 @@ export interface SeriesGroupItem {
   seasons: SeasonItem[];
   seasonCount: number;
   verdict: ReadinessVerdict;
+  /** Non-default language target (only set when a per-series override differs from global config) */
+  languageOverride?: string;
 }
 
 export function isSeriesGroup(
@@ -489,6 +493,11 @@ export function MediaGridView({
                         )}
                         posterImageId={item.posterImageId}
                         verdict={item.verdict}
+                        watchedEpisodes={item.seasons.reduce(
+                          (sum, s) => sum + (s.watchedEpisodes ?? 0),
+                          0
+                        )}
+                        languageOverride={item.languageOverride}
                       />
                     </button>
                   ) : (
@@ -504,6 +513,8 @@ export function MediaGridView({
                         availableEpisodes={item.availableEpisodes}
                         posterImageId={item.posterImageId}
                         verdict={item.verdict}
+                        watchedEpisodes={item.watchedEpisodes}
+                        languageOverride={item.languageOverride}
                       />
                     </button>
                   )

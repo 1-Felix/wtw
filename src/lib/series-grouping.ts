@@ -43,6 +43,7 @@ export function groupSeasonsBySeries(
         seasons: sorted,
         seasonCount: sorted.length,
         verdict: computeGroupVerdict(sorted),
+        languageOverride: first.languageOverride,
       });
     }
   }
@@ -120,6 +121,7 @@ export function filterDismissedFromGroups(
         seasons: sorted,
         seasonCount: sorted.length,
         verdict: computeGroupVerdict(sorted),
+        languageOverride: first.languageOverride,
       });
     }
   }

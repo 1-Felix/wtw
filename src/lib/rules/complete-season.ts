@@ -19,6 +19,7 @@ export function completeSeasonRule(
       ruleName: RULE_NAME,
       passed: false,
       detail: `${aired}/${totalExpected} episodes aired, ${available} available`,
+      compactDetail: "",
       numerator: available,
       denominator: totalExpected,
     };
@@ -32,6 +33,7 @@ export function completeSeasonRule(
     detail: passed
       ? `All ${totalExpected} episodes available`
       : `${available}/${totalExpected} episodes available`,
+    compactDetail: "",
     numerator: available,
     denominator: totalExpected,
   };

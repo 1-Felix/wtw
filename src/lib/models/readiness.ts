@@ -4,6 +4,8 @@ export interface RuleResult {
   ruleName: string;
   passed: boolean;
   detail: string;
+  /** Shortened detail for compact UI contexts (e.g., progress bar labels) */
+  compactDetail: string;
   /** Progress numerator (e.g., 10 episodes available) */
   numerator: number;
   /** Progress denominator (e.g., 12 total episodes) */

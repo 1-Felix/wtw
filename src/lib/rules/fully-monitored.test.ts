@@ -56,6 +56,7 @@ describe("fullyMonitoredRule", () => {
     expect(result.passed).toBe(true);
     expect(result.numerator).toBe(3);
     expect(result.denominator).toBe(3);
+    expect(result.compactDetail).toBe("monitored");
   });
 
   it("fails when some episodes are not monitored", () => {
@@ -68,6 +69,7 @@ describe("fullyMonitoredRule", () => {
     expect(result.passed).toBe(false);
     expect(result.numerator).toBe(2);
     expect(result.denominator).toBe(3);
+    expect(result.compactDetail).toBe("2/3 monitored");
   });
 
   it("passes (skips) when no monitoring data is available (Sonarr not configured)", () => {
@@ -78,5 +80,6 @@ describe("fullyMonitoredRule", () => {
     const result = fullyMonitoredRule(season, defaultContext);
     expect(result.passed).toBe(true);
     expect(result.detail).toContain("Sonarr not configured");
+    expect(result.compactDetail).toBe("");
   });
 });
