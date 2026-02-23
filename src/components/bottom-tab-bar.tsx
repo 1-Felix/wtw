@@ -27,6 +27,9 @@ interface BottomTabBarProps {
 export function BottomTabBar({ counts }: BottomTabBarProps) {
   const pathname = usePathname();
 
+  // Hide tab bar during setup to prevent z-index overlap with setup overlay
+  if (pathname.startsWith("/setup")) return null;
+
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-sidebar pb-[env(safe-area-inset-bottom)] md:hidden">
       <div className="flex items-center justify-around">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { Tv2, Clock, Globe, Play, Settings } from "lucide-react";
 import { NavLink } from "@/components/nav-link";
 import type { NavCounts } from "@/lib/counts";
@@ -36,7 +37,11 @@ const navItems = [
 ];
 
 export function Sidebar({ counts }: SidebarProps) {
+  const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+
+  // Hide sidebar during setup — no navigation needed during onboarding
+  if (pathname.startsWith("/setup")) return null;
 
   return (
     <aside
