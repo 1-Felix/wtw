@@ -73,7 +73,7 @@ function SettingsContent() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList variant="line" className="mb-6 overflow-x-auto overscroll-x-contain">
+        <TabsList variant="line" className="mb-6 flex-wrap overflow-hidden">
           {sections.map((s) => (
             <TabsTrigger key={s.id} value={s.id}>
               {s.label}

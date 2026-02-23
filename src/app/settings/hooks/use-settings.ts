@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -14,6 +14,7 @@ const AUTO_SAVE_DELAY = 800;
 
 export function useSettings() {
   const router = useRouter();
+  const [, startTransition] = useTransition();
   const [config, setConfig] = useState<RulesConfig | null>(null);
   const [webhooks, setWebhooks] = useState<Webhook[]>([]);
   const [dismissed, setDismissed] = useState<DismissedItem[]>([]);
@@ -23,9 +24,11 @@ export function useSettings() {
   const lastSavedConfig = useRef<string | null>(null);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latestConfig = useRef<RulesConfig | null>(null);
-  // Keep router in a ref so doSave is stable and doesn't re-trigger effects
+  // Keep router and startTransition in refs so doSave is stable
   const routerRef = useRef(router);
   routerRef.current = router;
+  const startTransitionRef = useRef(startTransition);
+  startTransitionRef.current = startTransition;
 
   // Keep latest config in ref for flush-on-unmount
   latestConfig.current = config;
@@ -43,8 +46,12 @@ export function useSettings() {
           // Update ref so the comparison guard doesn't re-trigger
           lastSavedConfig.current = JSON.stringify(configToSave);
           toast.success("Settings saved");
-          // Re-render server components (nav badge counts, page content)
-          routerRef.current.refresh();
+          // Re-render server components (nav badge counts, page content).
+          // Wrapped in startTransition so React keeps the current UI visible
+          // (including sidebar pills) until the server re-render completes.
+          startTransitionRef.current(() => {
+            routerRef.current.refresh();
+          });
         } else {
           toast.error("Failed to save settings");
         }

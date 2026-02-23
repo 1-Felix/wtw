@@ -1,13 +1,39 @@
 "use client";
 
 import { useState } from "react";
-import { Settings } from "lucide-react";
+import { Tv2, Clock, Globe, Play, Settings } from "lucide-react";
 import { NavLink } from "@/components/nav-link";
 import type { NavCounts } from "@/lib/counts";
 
 interface SidebarProps {
   counts: NavCounts;
 }
+
+const navItems = [
+  {
+    href: "/",
+    label: "Ready to Watch",
+    icon: Tv2,
+    countKey: "ready" as const,
+  },
+  {
+    href: "/almost-ready",
+    label: "Almost Ready",
+    icon: Clock,
+    countKey: "almostReady" as const,
+  },
+  {
+    href: "/languages",
+    label: "Languages",
+    icon: Globe,
+  },
+  {
+    href: "/continue",
+    label: "Continue Watching",
+    icon: Play,
+    countKey: "continue" as const,
+  },
+];
 
 export function Sidebar({ counts }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
@@ -49,28 +75,33 @@ export function Sidebar({ counts }: SidebarProps) {
       </div>
       <nav className="flex flex-1 flex-col space-y-1 p-3">
         <div className="flex-1 space-y-1">
-          {collapsed ? (
-            <>
-              <NavLink href="/" label="R" title="Ready to Watch" count={counts.ready} />
-              <NavLink href="/almost-ready" label="A" title="Almost Ready" count={counts.almostReady} />
-              <NavLink href="/languages" label="L" title="Languages" />
-              <NavLink href="/continue" label="C" title="Continue Watching" count={counts.continue} />
-            </>
-          ) : (
-            <>
-              <NavLink href="/" label="Ready to Watch" count={counts.ready} />
-              <NavLink href="/almost-ready" label="Almost Ready" count={counts.almostReady} />
-              <NavLink href="/languages" label="Languages" />
-              <NavLink href="/continue" label="Continue Watching" count={counts.continue} />
-            </>
-          )}
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <NavLink
+                key={item.href}
+                href={item.href}
+                label={collapsed ? "" : item.label}
+                icon={<Icon className="h-4 w-4" />}
+                title={collapsed ? item.label : undefined}
+                count={
+                  item.countKey
+                    ? counts[item.countKey]
+                    : undefined
+                }
+                collapsed={collapsed}
+              />
+            );
+          })}
         </div>
         <div className="border-t border-border pt-2">
-          {collapsed ? (
-            <NavLink href="/settings" label="" title="Settings" icon={<Settings className="h-4 w-4" />} />
-          ) : (
-            <NavLink href="/settings" label="Settings" icon={<Settings className="h-4 w-4" />} />
-          )}
+          <NavLink
+            href="/settings"
+            label={collapsed ? "" : "Settings"}
+            icon={<Settings className="h-4 w-4" />}
+            title={collapsed ? "Settings" : undefined}
+            collapsed={collapsed}
+          />
         </div>
       </nav>
     </aside>
