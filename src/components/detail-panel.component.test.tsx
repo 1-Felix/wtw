@@ -56,6 +56,7 @@ vi.mock("lucide-react", () => ({
   CircleCheck: () => <span data-testid="icon-circle-check" />,
   Play: () => <span data-testid="icon-play" />,
   AlertCircle: () => <span data-testid="icon-alert" />,
+  Clock: () => <span data-testid="icon-clock" />,
   ArrowLeft: () => <span data-testid="icon-arrow-left" />,
   EyeOff: () => <span data-testid="icon-eye-off" />,
   Search: () => <span data-testid="icon-search" />,
@@ -75,6 +76,7 @@ vi.mock("next/navigation", () => ({
 // Mock utility
 vi.mock("@/lib/utils", () => ({
   formatRelativeTime: (date: string) => `relative(${date})`,
+  formatAirDate: (date: string) => `airs(${date})`,
   cn: (...args: unknown[]) => args.filter(Boolean).join(" "),
 }));
 
@@ -103,6 +105,8 @@ function makeGroupItem(
           episodeNumber: 1,
           title: `S${i + 1}E01 Pilot`,
           hasFile: true,
+          hasAired: true,
+          airDateUtc: null,
           audioLanguages: ["English"],
           isWatched: false,
           playbackProgress: null,
@@ -112,6 +116,8 @@ function makeGroupItem(
           episodeNumber: 2,
           title: `S${i + 1}E02 Second`,
           hasFile: true,
+          hasAired: true,
+          airDateUtc: null,
           audioLanguages: ["English"],
           isWatched: false,
           playbackProgress: null,
