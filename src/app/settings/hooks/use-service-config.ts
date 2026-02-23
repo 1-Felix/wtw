@@ -11,6 +11,8 @@ const serviceStatusSchema = z.object({
     userName: z.string().nullable(),
     maskedApiKey: z.string().nullable(),
     source: z.enum(["env", "db"]).nullable(),
+    externalUrl: z.string().nullable(),
+    externalUrlSource: z.enum(["env", "db"]).nullable(),
   }),
   sonarr: z.object({
     configured: z.boolean(),

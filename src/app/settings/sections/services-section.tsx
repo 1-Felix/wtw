@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -57,6 +57,41 @@ function JellyfinCard() {
   const [authenticating, setAuthenticating] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // External URL state
+  const [externalUrl, setExternalUrl] = useState("");
+  const [externalUrlDirty, setExternalUrlDirty] = useState(false);
+  const [savingExternalUrl, setSavingExternalUrl] = useState(false);
+
+  // Initialize external URL from service config
+  useEffect(() => {
+    if (jf?.externalUrl != null && !externalUrlDirty) {
+      // Only show the explicitly-set external URL, not the fallback
+      // If source is null, it means it's using the jellyfin.url fallback — show empty
+      setExternalUrl(jf.externalUrlSource ? jf.externalUrl : "");
+    }
+  }, [jf?.externalUrl, jf?.externalUrlSource, externalUrlDirty]);
+
+  const saveExternalUrl = useCallback(async () => {
+    setSavingExternalUrl(true);
+    try {
+      const res = await fetch("/api/services/jellyfin/external-url", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ externalUrl: externalUrl || null }),
+      });
+      if (res.ok) {
+        toast.success(externalUrl ? "External URL saved" : "External URL cleared");
+        setExternalUrlDirty(false);
+      } else {
+        toast.error("Failed to save external URL");
+      }
+    } catch {
+      toast.error("Failed to save external URL");
+    } finally {
+      setSavingExternalUrl(false);
+    }
+  }, [externalUrl]);
 
   async function handleTest() {
     setTesting(true);
@@ -162,9 +197,56 @@ function JellyfinCard() {
       {isEnvOverride && <SourceBadge source="env" />}
 
       {isConnected && mode === "view" && (
-        <p className="mt-2 text-sm text-muted-foreground">
-          Connected{jf.userName ? ` as ${jf.userName}` : ""}{jf.maskedApiKey ? ` — API key: ${jf.maskedApiKey}` : ""}
-        </p>
+        <>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Connected{jf.userName ? ` as ${jf.userName}` : ""}{jf.maskedApiKey ? ` — API key: ${jf.maskedApiKey}` : ""}
+          </p>
+
+          {/* External URL for deep links */}
+          <div className="mt-3 space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">
+              External URL
+            </label>
+            {jf.externalUrlSource === "env" ? (
+              <>
+                <Input
+                  type="url"
+                  value={jf.externalUrl ?? ""}
+                  disabled
+                  className="text-sm"
+                />
+                <SourceBadge source="env" />
+              </>
+            ) : (
+              <div className="flex gap-2">
+                <Input
+                  type="url"
+                  placeholder="https://jellyfin.example.com (optional)"
+                  value={externalUrl}
+                  onChange={(e) => {
+                    setExternalUrl(e.target.value);
+                    setExternalUrlDirty(true);
+                  }}
+                  className="text-sm"
+                />
+                {externalUrlDirty && (
+                  <Button
+                    onClick={saveExternalUrl}
+                    disabled={savingExternalUrl}
+                    variant="secondary"
+                    size="sm"
+                    className="shrink-0"
+                  >
+                    {savingExternalUrl ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+                  </Button>
+                )}
+              </div>
+            )}
+            <p className="text-[11px] text-muted-foreground">
+              The URL you use to access Jellyfin in your browser. Used for &quot;Open in Jellyfin&quot; links. Leave empty to use the server URL.
+            </p>
+          </div>
+        </>
       )}
 
       {(!isConnected || mode === "edit") && !isEnvOverride && (

@@ -165,3 +165,36 @@ function getRadarrConfigSource(): ConfigSource {
   if (url && apiKey) return "db";
   return null;
 }
+
+// --- Jellyfin external URL resolution ---
+
+export interface JellyfinExternalUrlResult {
+  externalUrl: string | null;
+  source: ConfigSource;
+}
+
+/**
+ * Resolve the browser-accessible Jellyfin URL for deep links.
+ * Priority: JELLYFIN_EXTERNAL_URL env var > jellyfin.externalUrl DB setting > jellyfin.url (API URL fallback)
+ */
+export function getJellyfinExternalUrl(): JellyfinExternalUrlResult {
+  // 1. Environment variable takes highest priority
+  const env = getEnvConfig();
+  if (env.JELLYFIN_EXTERNAL_URL) {
+    return { externalUrl: env.JELLYFIN_EXTERNAL_URL, source: "env" };
+  }
+
+  // 2. Dedicated DB setting
+  const dbExternalUrl = getSetting<string>("jellyfin.externalUrl");
+  if (dbExternalUrl) {
+    return { externalUrl: dbExternalUrl, source: "db" };
+  }
+
+  // 3. Fall back to the existing Jellyfin API URL (works when it's browser-accessible)
+  const jellyfinConfig = resolveJellyfinConfig();
+  if (jellyfinConfig) {
+    return { externalUrl: jellyfinConfig.url, source: null };
+  }
+
+  return { externalUrl: null, source: null };
+}

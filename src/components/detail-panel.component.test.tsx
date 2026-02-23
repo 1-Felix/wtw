@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DetailPanel } from "./detail-panel";
-import type { SeriesGroupDetailItem } from "./detail-panel";
+import type { SeriesGroupDetailItem, SeasonDetailItem, MovieDetailItem } from "./detail-panel";
 
 // Mock UI components that depend on Radix portals
 vi.mock("./poster-image", () => ({
@@ -59,8 +59,15 @@ vi.mock("lucide-react", () => ({
   Clock: () => <span data-testid="icon-clock" />,
   ArrowLeft: () => <span data-testid="icon-arrow-left" />,
   EyeOff: () => <span data-testid="icon-eye-off" />,
+  ExternalLink: () => <span data-testid="icon-external-link" />,
   Search: () => <span data-testid="icon-search" />,
   X: () => <span data-testid="icon-x" />,
+}));
+
+// Mock Jellyfin external URL hook
+const mockUseJellyfinExternalUrl = vi.fn<() => string | null>(() => null);
+vi.mock("@/hooks/use-jellyfin-external-url", () => ({
+  useJellyfinExternalUrl: () => mockUseJellyfinExternalUrl(),
 }));
 
 // Mock next/navigation
@@ -255,5 +262,111 @@ describe("SeriesGroupDetail", () => {
     // 3 season headers each with a badge + possibly 1 main badge = at least 3
     const badges = screen.getAllByTestId("readiness-badge");
     expect(badges.length).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe("Open in Jellyfin button", () => {
+  const onClose = vi.fn();
+  const onDismiss = vi.fn();
+
+  function makeSeasonItem(): SeasonDetailItem {
+    return {
+      type: "season",
+      seriesId: "series-abc",
+      seriesTitle: "Test Series",
+      seasonNumber: 1,
+      totalEpisodes: 10,
+      availableEpisodes: 10,
+      posterImageId: "poster-1",
+      verdict: { status: "ready", ruleResults: [], progressPercent: 1 },
+      episodes: [],
+      watchedEpisodes: 0,
+      lastPlayedAt: null,
+    };
+  }
+
+  function makeMovieItem(): MovieDetailItem {
+    return {
+      type: "movie",
+      id: "movie-xyz",
+      title: "Test Movie",
+      year: 2024,
+      posterImageId: "poster-2",
+      audioLanguages: ["English"],
+      subtitleLanguages: [],
+      verdict: { status: "ready", ruleResults: [], progressPercent: 1 },
+    };
+  }
+
+  it("does not render button when external URL is null", () => {
+    mockUseJellyfinExternalUrl.mockReturnValue(null);
+    render(
+      <DetailPanel item={makeSeasonItem()} onClose={onClose} onDismiss={onDismiss} />
+    );
+
+    expect(screen.queryByText("Open in Jellyfin")).not.toBeInTheDocument();
+  });
+
+  it("renders button when external URL is configured", () => {
+    mockUseJellyfinExternalUrl.mockReturnValue("https://jf.example.com");
+    render(
+      <DetailPanel item={makeSeasonItem()} onClose={onClose} onDismiss={onDismiss} />
+    );
+
+    expect(screen.getByText("Open in Jellyfin")).toBeInTheDocument();
+  });
+
+  it("links to correct Jellyfin detail page for a series", () => {
+    mockUseJellyfinExternalUrl.mockReturnValue("https://jf.example.com");
+    render(
+      <DetailPanel item={makeSeasonItem()} onClose={onClose} onDismiss={onDismiss} />
+    );
+
+    const link = screen.getByText("Open in Jellyfin").closest("a");
+    expect(link).toHaveAttribute(
+      "href",
+      "https://jf.example.com/web/index.html#!/details?id=series-abc"
+    );
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
+  it("links to correct Jellyfin detail page for a movie", () => {
+    mockUseJellyfinExternalUrl.mockReturnValue("https://jf.example.com");
+    render(
+      <DetailPanel item={makeMovieItem()} onClose={onClose} onDismiss={onDismiss} />
+    );
+
+    const link = screen.getByText("Open in Jellyfin").closest("a");
+    expect(link).toHaveAttribute(
+      "href",
+      "https://jf.example.com/web/index.html#!/details?id=movie-xyz"
+    );
+  });
+
+  it("links to series ID for a series-group item", () => {
+    mockUseJellyfinExternalUrl.mockReturnValue("https://jf.example.com");
+    render(
+      <DetailPanel item={makeGroupItem(2)} onClose={onClose} onDismiss={onDismiss} />
+    );
+
+    const link = screen.getByText("Open in Jellyfin").closest("a");
+    expect(link).toHaveAttribute(
+      "href",
+      "https://jf.example.com/web/index.html#!/details?id=series-1"
+    );
+  });
+
+  it("normalizes trailing slash in external URL", () => {
+    mockUseJellyfinExternalUrl.mockReturnValue("https://jf.example.com/");
+    render(
+      <DetailPanel item={makeMovieItem()} onClose={onClose} onDismiss={onDismiss} />
+    );
+
+    const link = screen.getByText("Open in Jellyfin").closest("a");
+    expect(link).toHaveAttribute(
+      "href",
+      "https://jf.example.com/web/index.html#!/details?id=movie-xyz"
+    );
   });
 });

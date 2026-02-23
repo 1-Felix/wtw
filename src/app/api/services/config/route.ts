@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServiceConfig, getConfigSources } from "@/lib/config/services";
+import { getServiceConfig, getConfigSources, getJellyfinExternalUrl } from "@/lib/config/services";
 
 function maskApiKey(key: string): string {
   if (key.length <= 4) return key;
@@ -13,6 +13,7 @@ export async function GET() {
   try {
     const config = getServiceConfig();
     const sources = getConfigSources();
+    const jellyfinExternal = getJellyfinExternalUrl();
 
     return NextResponse.json({
       jellyfin: {
@@ -20,6 +21,8 @@ export async function GET() {
         userName: config.jellyfin?.userName ?? null,
         maskedApiKey: config.jellyfin ? maskApiKey(config.jellyfin.apiKey) : null,
         source: sources.jellyfin,
+        externalUrl: jellyfinExternal.externalUrl,
+        externalUrlSource: jellyfinExternal.source,
       },
       sonarr: {
         configured: config.sonarr !== null,

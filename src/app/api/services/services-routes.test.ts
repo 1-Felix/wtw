@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("@/lib/config/services", () => ({
   getServiceConfig: vi.fn(),
   getConfigSources: vi.fn(),
+  getJellyfinExternalUrl: vi.fn(() => ({ externalUrl: null, source: null })),
 }));
 
 vi.mock("@/lib/db/settings", () => ({
@@ -23,7 +24,7 @@ vi.mock("@/middleware", () => ({
 const mockFetch = vi.fn();
 vi.stubGlobal("fetch", mockFetch);
 
-import { getServiceConfig, getConfigSources } from "@/lib/config/services";
+import { getServiceConfig, getConfigSources, getJellyfinExternalUrl } from "@/lib/config/services";
 import { setSetting, deleteSettings } from "@/lib/db/settings";
 import { restartSyncScheduler } from "@/lib/sync/orchestrator";
 
@@ -77,7 +78,7 @@ describe("GET /api/services/config", () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body.jellyfin).toEqual({ configured: true, userName: "Admin", maskedApiKey: "key", source: "env" });
+    expect(body.jellyfin).toEqual({ configured: true, userName: "Admin", maskedApiKey: "key", source: "env", externalUrl: null, externalUrlSource: null });
     expect(body.sonarr).toEqual({ configured: true, maskedApiKey: "skey", source: "env" });
     expect(body.radarr).toEqual({ configured: true, maskedApiKey: "rkey", source: "db" });
   });
@@ -117,7 +118,7 @@ describe("GET /api/services/config", () => {
     const response = await getConfig();
     const body = await response.json();
 
-    expect(body.jellyfin).toEqual({ configured: false, userName: null, maskedApiKey: null, source: null });
+    expect(body.jellyfin).toEqual({ configured: false, userName: null, maskedApiKey: null, source: null, externalUrl: null, externalUrlSource: null });
     expect(body.sonarr).toEqual({ configured: false, maskedApiKey: null, source: null });
   });
 });

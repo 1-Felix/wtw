@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { Check, ChevronDown, CircleCheck, Play, AlertCircle, Clock, ArrowLeft, EyeOff } from "lucide-react";
+import { Check, ChevronDown, CircleCheck, Play, AlertCircle, Clock, ArrowLeft, EyeOff, ExternalLink } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -13,6 +13,7 @@ import { ReadinessBadge } from "./readiness-badge";
 import { ProgressBar } from "./progress-bar";
 import type { ReadinessVerdict, RuleResult } from "@/lib/models/readiness";
 import { formatRelativeTime, formatAirDate } from "@/lib/utils";
+import { useJellyfinExternalUrl } from "@/hooks/use-jellyfin-external-url";
 
 // --- Shared types for items displayed in the panel ---
 
@@ -68,6 +69,18 @@ export type DetailItem =
   | SeriesGroupDetailItem
   | MovieDetailItem;
 
+// --- Jellyfin deep link helper ---
+
+function getJellyfinItemId(item: DetailItem): string {
+  if (item.type === "movie") return item.id;
+  return item.seriesId;
+}
+
+function buildJellyfinUrl(baseUrl: string, itemId: string): string {
+  const normalizedBase = baseUrl.replace(/\/+$/, "");
+  return `${normalizedBase}/web/index.html#!/details?id=${itemId}`;
+}
+
 // --- Panel component ---
 
 interface DetailPanelProps {
@@ -77,6 +90,7 @@ interface DetailPanelProps {
 }
 
 export function DetailPanel({ item, onClose, onDismiss }: DetailPanelProps) {
+  const jellyfinExternalUrl = useJellyfinExternalUrl();
   const panelRef = useRef<HTMLDivElement>(null);
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
@@ -233,9 +247,28 @@ export function DetailPanel({ item, onClose, onDismiss }: DetailPanelProps) {
               )}
             </div>
 
-            {/* Footer — Dismiss button */}
-            {onDismiss && !isDismissed && (
-              <div className="sticky bottom-0 border-t border-border bg-background px-4 py-3">
+            {/* Footer */}
+            <div className="sticky bottom-0 border-t border-border bg-background px-4 py-3 space-y-2">
+              {/* Open in Jellyfin button */}
+              {jellyfinExternalUrl && (
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  asChild
+                >
+                  <a
+                    href={buildJellyfinUrl(jellyfinExternalUrl, getJellyfinItemId(item))}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Open in Jellyfin
+                  </a>
+                </Button>
+              )}
+
+              {/* Dismiss button */}
+              {onDismiss && !isDismissed && (
                 <Button
                   variant="outline"
                   className="w-full text-muted-foreground hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
@@ -244,15 +277,13 @@ export function DetailPanel({ item, onClose, onDismiss }: DetailPanelProps) {
                   <EyeOff className="h-4 w-4" />
                   Dismiss{item.type === "series-group" ? " All Seasons" : ""}
                 </Button>
-              </div>
-            )}
-            {isDismissed && (
-              <div className="sticky bottom-0 border-t border-border bg-background px-4 py-3">
+              )}
+              {isDismissed && (
                 <p className="text-center text-xs text-muted-foreground">
                   This item has been dismissed.
                 </p>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         )}
       </SheetContent>

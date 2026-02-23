@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { getServiceConfig, isJellyfinFullyConfigured, getConfigSources } from "./services";
+import { getServiceConfig, isJellyfinFullyConfigured, getConfigSources, getJellyfinExternalUrl } from "./services";
 
 // Mock env module
 vi.mock("./env", () => ({
@@ -199,5 +199,75 @@ describe("getConfigSources", () => {
     expect(sources.jellyfin).toBe("db");
     expect(sources.radarr).toBe("db");
     expect(sources.sonarr).toBeNull();
+  });
+});
+
+describe("getJellyfinExternalUrl", () => {
+  it("returns null when nothing is configured", () => {
+    const result = getJellyfinExternalUrl();
+    expect(result.externalUrl).toBeNull();
+    expect(result.source).toBeNull();
+  });
+
+  it("returns JELLYFIN_EXTERNAL_URL env var with source 'env' when set", () => {
+    vi.mocked(getEnvConfig).mockReturnValue({
+      JELLYFIN_EXTERNAL_URL: "https://jf.example.com",
+      SYNC_INTERVAL_MINUTES: 15,
+      PORT: 3000,
+    });
+
+    const result = getJellyfinExternalUrl();
+    expect(result.externalUrl).toBe("https://jf.example.com");
+    expect(result.source).toBe("env");
+  });
+
+  it("returns jellyfin.externalUrl DB setting with source 'db' when set", () => {
+    mockDbSettings({
+      "jellyfin.externalUrl": "https://db-external.example.com",
+    });
+
+    const result = getJellyfinExternalUrl();
+    expect(result.externalUrl).toBe("https://db-external.example.com");
+    expect(result.source).toBe("db");
+  });
+
+  it("env var overrides DB setting", () => {
+    vi.mocked(getEnvConfig).mockReturnValue({
+      JELLYFIN_EXTERNAL_URL: "https://env-external.example.com",
+      SYNC_INTERVAL_MINUTES: 15,
+      PORT: 3000,
+    });
+    mockDbSettings({
+      "jellyfin.externalUrl": "https://db-external.example.com",
+    });
+
+    const result = getJellyfinExternalUrl();
+    expect(result.externalUrl).toBe("https://env-external.example.com");
+    expect(result.source).toBe("env");
+  });
+
+  it("falls back to jellyfin.url when no external URL is configured", () => {
+    mockDbSettings({
+      "jellyfin.url": "http://jellyfin:8096",
+      "jellyfin.apiKey": "key",
+      "jellyfin.userId": "uid",
+    });
+
+    const result = getJellyfinExternalUrl();
+    expect(result.externalUrl).toBe("http://jellyfin:8096");
+    expect(result.source).toBeNull();
+  });
+
+  it("prefers dedicated external URL over jellyfin.url fallback", () => {
+    mockDbSettings({
+      "jellyfin.url": "http://jellyfin:8096",
+      "jellyfin.apiKey": "key",
+      "jellyfin.userId": "uid",
+      "jellyfin.externalUrl": "https://public-jf.example.com",
+    });
+
+    const result = getJellyfinExternalUrl();
+    expect(result.externalUrl).toBe("https://public-jf.example.com");
+    expect(result.source).toBe("db");
   });
 });

@@ -5,6 +5,7 @@ const envSchema = z.object({
   JELLYFIN_URL: z.url().optional().describe("Jellyfin server URL"),
   JELLYFIN_API_KEY: z.string().min(1).optional().describe("Jellyfin API key"),
   JELLYFIN_USER_ID: z.string().min(1).optional().describe("Jellyfin user ID (needed for watch status)"),
+  JELLYFIN_EXTERNAL_URL: z.url().optional().describe("Browser-accessible Jellyfin URL (overrides jellyfin.externalUrl DB setting for deep links)"),
 
   // Optional — Sonarr
   SONARR_URL: z.url().optional().describe("Sonarr server URL"),
