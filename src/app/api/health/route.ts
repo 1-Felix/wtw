@@ -2,8 +2,23 @@ import { NextResponse } from "next/server";
 import { getSyncState } from "@/lib/sync/cache";
 import { getRulesConfigError, wasRulesJsonImported } from "@/lib/config/rules";
 import { getEnvConfig } from "@/lib/config/env";
+import { isJellyfinFullyConfigured } from "@/lib/config/services";
 
 export async function GET() {
+  // Check if any services are configured at all
+  if (!isJellyfinFullyConfigured()) {
+    return NextResponse.json({
+      status: "setup_required",
+      phase: "unconfigured",
+      lastSyncStart: null,
+      lastSyncEnd: null,
+      syncIntervalMinutes: 15,
+      rulesJsonImported: false,
+      services: [],
+      rulesConfigError: null,
+    });
+  }
+
   const syncState = getSyncState();
   const isInitializing = syncState.phase === "initializing";
   const rulesConfigError = getRulesConfigError();

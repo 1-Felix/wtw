@@ -63,6 +63,7 @@ export type DismissedItem = z.infer<typeof dismissedItemSchema>;
 export type HealthResponse = z.infer<typeof healthResponseSchema>;
 
 export type SettingsSection =
+  | "services"
   | "rules"
   | "language"
   | "overrides"

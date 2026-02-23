@@ -14,7 +14,7 @@ export async function register() {
       "@/lib/sync/orchestrator"
     );
 
-    // Start the background sync scheduler
+    // Start the background sync scheduler (will self-check if Jellyfin is configured)
     startSyncScheduler();
 
     // Handle graceful shutdown

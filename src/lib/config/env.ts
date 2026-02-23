@@ -1,10 +1,10 @@
 import { z } from "zod/v4";
 
 const envSchema = z.object({
-  // Required — Jellyfin
-  JELLYFIN_URL: z.url().describe("Jellyfin server URL"),
-  JELLYFIN_API_KEY: z.string().min(1).describe("Jellyfin API key"),
-  JELLYFIN_USER_ID: z.string().min(1).describe("Jellyfin user ID (needed for watch status)"),
+  // Optional — Jellyfin (can be configured via UI instead)
+  JELLYFIN_URL: z.url().optional().describe("Jellyfin server URL"),
+  JELLYFIN_API_KEY: z.string().min(1).optional().describe("Jellyfin API key"),
+  JELLYFIN_USER_ID: z.string().min(1).optional().describe("Jellyfin user ID (needed for watch status)"),
 
   // Optional — Sonarr
   SONARR_URL: z.url().optional().describe("Sonarr server URL"),
@@ -33,11 +33,20 @@ export function getEnvConfig(): EnvConfig {
   if (!result.success) {
     const formatted = z.prettifyError(result.error);
     console.error("Environment variable validation failed:\n", formatted);
-    process.exit(1);
+    console.error("Continuing with defaults — configure services via the web UI at /setup.");
+    // Fall back to parsing with an empty object to get defaults
+    cachedConfig = envSchema.parse({});
+    return cachedConfig;
   }
 
   cachedConfig = result.data;
   return cachedConfig;
+}
+
+/** Check if Jellyfin is fully configured via environment variables */
+export function isJellyfinConfiguredViaEnv(): boolean {
+  const config = getEnvConfig();
+  return Boolean(config.JELLYFIN_URL && config.JELLYFIN_API_KEY && config.JELLYFIN_USER_ID);
 }
 
 export function isSonarrConfigured(): boolean {

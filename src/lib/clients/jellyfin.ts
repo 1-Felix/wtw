@@ -63,9 +63,9 @@ export class JellyfinClient {
 
   constructor(baseUrl?: string, apiKey?: string, userId?: string, timeout = 30000) {
     const config = getEnvConfig();
-    this.baseUrl = (baseUrl ?? config.JELLYFIN_URL).replace(/\/$/, "");
-    this.apiKey = apiKey ?? config.JELLYFIN_API_KEY;
-    this.userId = userId ?? config.JELLYFIN_USER_ID;
+    this.baseUrl = (baseUrl ?? config.JELLYFIN_URL ?? "").replace(/\/$/, "");
+    this.apiKey = apiKey ?? config.JELLYFIN_API_KEY ?? "";
+    this.userId = userId ?? config.JELLYFIN_USER_ID ?? "";
     this.timeout = timeout;
   }
 

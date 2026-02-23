@@ -1,14 +1,20 @@
 import { NextResponse } from "next/server";
-import { getEnvConfig } from "@/lib/config/env";
+import { getServiceConfig } from "@/lib/config/services";
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ itemId: string }> }
 ) {
   const { itemId } = await params;
-  const config = getEnvConfig();
-  const baseUrl = config.JELLYFIN_URL.replace(/\/$/, "");
-  const imageUrl = `${baseUrl}/Items/${itemId}/Images/Primary?api_key=${config.JELLYFIN_API_KEY}&maxWidth=400`;
+  const { jellyfin } = getServiceConfig();
+  if (!jellyfin) {
+    return NextResponse.json(
+      { error: "Jellyfin not configured" },
+      { status: 503 }
+    );
+  }
+  const baseUrl = jellyfin.url.replace(/\/$/, "");
+  const imageUrl = `${baseUrl}/Items/${itemId}/Images/Primary?api_key=${jellyfin.apiKey}&maxWidth=400`;
 
   try {
     const response = await fetch(imageUrl, {

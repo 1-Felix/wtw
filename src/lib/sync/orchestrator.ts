@@ -1,7 +1,8 @@
 import { JellyfinClient } from "@/lib/clients/jellyfin";
 import { SonarrClient } from "@/lib/clients/sonarr";
 import { RadarrClient } from "@/lib/clients/radarr";
-import { getEnvConfig, isSonarrConfigured, isRadarrConfigured } from "@/lib/config/env";
+import { getEnvConfig } from "@/lib/config/env";
+import { getServiceConfig, isJellyfinFullyConfigured } from "@/lib/config/services";
 import { reloadRulesConfig, getRulesConfig } from "@/lib/config/rules";
 import { syncJellyfin, type JellyfinSyncResult } from "./jellyfin-sync";
 import { syncSonarr } from "./sonarr-sync";
@@ -58,46 +59,58 @@ export async function runSync(): Promise<void> {
   // Reload rules config on each sync
   reloadRulesConfig();
 
+  // Re-read service config from DB + env on each sync cycle
+  const serviceConfig = getServiceConfig();
+
   // --- Jellyfin (required) ---
   let jellyfinResult = getLastJellyfinData();
-  try {
-    const client = new JellyfinClient();
-    jellyfinResult = await syncJellyfin(client);
-    updateLastJellyfinData(jellyfinResult);
-    services.jellyfin = markSuccess(services.jellyfin);
-  } catch (err) {
-    console.error("Jellyfin sync failed, retaining last cached data:", err);
-    services.jellyfin = markError(services.jellyfin, err);
-    // jellyfinResult already holds getLastJellyfinData()
+  if (serviceConfig.jellyfin) {
+    try {
+      const client = new JellyfinClient(
+        serviceConfig.jellyfin.url,
+        serviceConfig.jellyfin.apiKey,
+        serviceConfig.jellyfin.userId
+      );
+      jellyfinResult = await syncJellyfin(client);
+      updateLastJellyfinData(jellyfinResult);
+      services.jellyfin = markSuccess(services.jellyfin);
+    } catch (err) {
+      console.error("Jellyfin sync failed, retaining last cached data:", err);
+      services.jellyfin = markError(services.jellyfin, err);
+    }
   }
 
   // --- Sonarr (optional) ---
   let sonarrData = getLastSonarrData();
-  if (isSonarrConfigured()) {
+  if (serviceConfig.sonarr) {
     try {
-      const client = new SonarrClient();
+      const client = new SonarrClient(
+        serviceConfig.sonarr.url,
+        serviceConfig.sonarr.apiKey
+      );
       sonarrData = await syncSonarr(client);
       updateLastSonarrData(sonarrData);
       services.sonarr = markSuccess(services.sonarr);
     } catch (err) {
       console.error("Sonarr sync failed, retaining last cached data:", err);
       services.sonarr = markError(services.sonarr, err);
-      // sonarrData already holds getLastSonarrData()
     }
   }
 
   // --- Radarr (optional) ---
   let radarrData = getLastRadarrData();
-  if (isRadarrConfigured()) {
+  if (serviceConfig.radarr) {
     try {
-      const client = new RadarrClient();
+      const client = new RadarrClient(
+        serviceConfig.radarr.url,
+        serviceConfig.radarr.apiKey
+      );
       radarrData = await syncRadarr(client);
       updateLastRadarrData(radarrData);
       services.radarr = markSuccess(services.radarr);
     } catch (err) {
       console.error("Radarr sync failed, retaining last cached data:", err);
       services.radarr = markError(services.radarr, err);
-      // radarrData already holds getLastRadarrData()
     }
   }
 
@@ -135,14 +148,25 @@ export async function runSync(): Promise<void> {
   console.log(`Sync completed at ${endTime}`);
 }
 
-/** Start the periodic sync scheduler */
+/** Start the periodic sync scheduler (only if Jellyfin is configured) */
 export function startSyncScheduler(): void {
+  if (!isJellyfinFullyConfigured()) {
+    console.log("Jellyfin not configured — sync scheduler not started. Configure via /setup.");
+    return;
+  }
+
   const config = getEnvConfig();
   const intervalMs = config.SYNC_INTERVAL_MINUTES * 60 * 1000;
 
+  const serviceConfig = getServiceConfig();
+
   // Initialize sync state
   updateSyncState(
-    createInitialSyncState(true, isSonarrConfigured(), isRadarrConfigured())
+    createInitialSyncState(
+      true,
+      serviceConfig.sonarr !== null,
+      serviceConfig.radarr !== null
+    )
   );
 
   // Run initial sync immediately
@@ -168,6 +192,24 @@ export function stopSyncScheduler(): void {
     clearInterval(syncTimer);
     syncTimer = null;
   }
+}
+
+/**
+ * Restart the sync scheduler with fresh configuration.
+ * Waits for any in-progress sync to complete before restarting.
+ */
+export async function restartSyncScheduler(): Promise<void> {
+  stopSyncScheduler();
+
+  // Wait for in-progress sync to complete (up to 30s)
+  if (syncInProgress) {
+    const start = Date.now();
+    while (syncInProgress && Date.now() - start < 30000) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+  }
+
+  startSyncScheduler();
 }
 
 /** Trigger a manual sync (resets the timer) */

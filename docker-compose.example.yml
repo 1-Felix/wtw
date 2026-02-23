@@ -1,3 +1,8 @@
+# All environment variables are optional. You can start with zero config
+# and use the built-in setup wizard at http://localhost:3000 to connect
+# your services through the web UI. Environment variables, if set, will
+# take priority over any values configured through the UI.
+
 services:
   wtw:
     image: ghcr.io/1-felix/wtw:latest
@@ -8,13 +13,11 @@ services:
     ports:
       - "3000:3000"
     environment:
-      # --- Required: Jellyfin ---
-      JELLYFIN_URL: "http://jellyfin:8096"
-      JELLYFIN_API_KEY: "your-jellyfin-api-key"
-      # Find your user ID by running:
-      #   curl http://<jellyfin-url>/Users?api_key=<your-api-key>
-      # and copying the "Id" field for your user.
-      JELLYFIN_USER_ID: "your-jellyfin-user-id"
+      # --- Optional: Jellyfin ---
+      # Can be configured via the setup wizard instead.
+      # JELLYFIN_URL: "http://jellyfin:8096"
+      # JELLYFIN_API_KEY: "your-jellyfin-api-key"
+      # JELLYFIN_USER_ID: "your-jellyfin-user-id"
 
       # --- Optional: Sonarr ---
       # SONARR_URL: "http://sonarr:8989"

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Info } from "lucide-react";
 import { healthResponseSchema } from "../schemas";
 import type { HealthResponse } from "../schemas";
+import { useServiceConfig } from "../hooks/use-service-config";
 
 function InfoRow({
   label,
@@ -22,6 +23,7 @@ function InfoRow({
 
 export function AboutSection() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
+  const { status: serviceStatus } = useServiceConfig();
 
   useEffect(() => {
     fetch("/api/health")
@@ -82,18 +84,28 @@ export function AboutSection() {
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Services
           </p>
-          {health.services.map((svc) => (
-            <div key={svc.name} className="flex items-center justify-between text-sm">
-              <span className="capitalize text-muted-foreground">{svc.name}</span>
-              <span
-                className={
-                  svc.connected ? "text-primary" : "text-destructive"
-                }
-              >
-                {svc.connected ? "Connected" : "Disconnected"}
-              </span>
-            </div>
-          ))}
+          {health.services.map((svc) => {
+            const source = serviceStatus?.[svc.name as keyof typeof serviceStatus]?.source ?? null;
+            return (
+              <div key={svc.name} className="flex items-center justify-between text-sm">
+                <span className="capitalize text-muted-foreground">{svc.name}</span>
+                <span className="flex items-center gap-2">
+                  {source && (
+                    <span className="text-xs text-muted-foreground">
+                      ({source === "env" ? "env" : "database"})
+                    </span>
+                  )}
+                  <span
+                    className={
+                      svc.connected ? "text-primary" : "text-destructive"
+                    }
+                  >
+                    {svc.connected ? "Connected" : "Disconnected"}
+                  </span>
+                </span>
+              </div>
+            );
+          })}
         </div>
       )}
     </section>

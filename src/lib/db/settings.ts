@@ -55,6 +55,28 @@ export function setAllSettings(settings: Record<string, unknown>): void {
 }
 
 /**
+ * Delete a single setting from the database.
+ */
+export function deleteSetting(key: string): void {
+  const db = getDb();
+  db.prepare("DELETE FROM settings WHERE key = ?").run(key);
+}
+
+/**
+ * Delete multiple settings at once (transactional).
+ */
+export function deleteSettings(keys: string[]): void {
+  const db = getDb();
+  const del = db.prepare("DELETE FROM settings WHERE key = ?");
+  const runBatch = db.transaction(() => {
+    for (const key of keys) {
+      del.run(key);
+    }
+  });
+  runBatch();
+}
+
+/**
  * Check if any settings exist in the database.
  */
 export function hasSettings(): boolean {
