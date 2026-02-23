@@ -133,6 +133,34 @@ describe("groupSeasonsBySeries", () => {
       expect(group.seasons.map((s) => s.seasonNumber)).toEqual([1, 2, 3]);
     }
   });
+
+  it("propagates languageOverride from first season to group", () => {
+    const seasons = [
+      { ...makeSeason("s1", "Show A", 1), languageOverride: "jpn" },
+      { ...makeSeason("s1", "Show A", 2), languageOverride: "jpn" },
+    ];
+    const result = groupSeasonsBySeries(seasons);
+    expect(result).toHaveLength(1);
+    const group = result[0];
+    expect("seasons" in group).toBe(true);
+    if ("seasons" in group) {
+      expect(group.languageOverride).toBe("jpn");
+    }
+  });
+
+  it("leaves languageOverride undefined on group when seasons have no override", () => {
+    const seasons = [
+      makeSeason("s1", "Show A", 1),
+      makeSeason("s1", "Show A", 2),
+    ];
+    const result = groupSeasonsBySeries(seasons);
+    expect(result).toHaveLength(1);
+    const group = result[0];
+    expect("seasons" in group).toBe(true);
+    if ("seasons" in group) {
+      expect(group.languageOverride).toBeUndefined();
+    }
+  });
 });
 
 describe("formatSeasonSummary", () => {
@@ -265,6 +293,31 @@ describe("filterDismissedFromGroups", () => {
     const second = result[1];
     expect("seasonNumber" in second && second.seasonNumber).toBe(1);
     expect("seriesId" in second && second.seriesId).toBe("s2");
+  });
+
+  it("preserves languageOverride when group shrinks", () => {
+    const group: SeriesGroupItem = {
+      seriesId: "s1",
+      seriesTitle: "Show A",
+      posterImageId: null,
+      dateAdded: "2025-01-01",
+      seasons: [
+        { ...makeSeason("s1", "Show A", 1), languageOverride: "jpn" },
+        { ...makeSeason("s1", "Show A", 2), languageOverride: "jpn" },
+        { ...makeSeason("s1", "Show A", 3), languageOverride: "jpn" },
+      ],
+      seasonCount: 3,
+      verdict: makeVerdict("ready", 1),
+      languageOverride: "jpn",
+    };
+    // Dismiss season 1 — remaining group should still have languageOverride
+    const result = filterDismissedFromGroups([group], new Set(["s1-s1"]));
+    expect(result).toHaveLength(1);
+    const item = result[0];
+    expect("seasons" in item).toBe(true);
+    if ("seasons" in item) {
+      expect(item.languageOverride).toBe("jpn");
+    }
   });
 
   it("recomputes verdict when group shrinks", () => {

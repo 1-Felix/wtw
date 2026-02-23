@@ -4,6 +4,31 @@ import { ProgressBar } from "./progress-bar";
 import { formatSeasonSummary } from "@/lib/series-grouping";
 import type { ReadinessVerdict } from "@/lib/models/readiness";
 
+/** Build compact progress bar label from failing rules, skipping complete-season (redundant with subtitle) */
+function compactAlmostReadyLabel(verdict: ReadinessVerdict): string {
+  return verdict.ruleResults
+    .filter((r) => !r.passed && r.ruleName !== "complete-season")
+    .map((r) => r.compactDetail)
+    .filter(Boolean)
+    .join(", ");
+}
+
+/** Build annotation line for ready cards (watch progress + language override) */
+function buildAnnotations(
+  watchedEpisodes: number | undefined,
+  totalEpisodes: number,
+  languageOverride: string | undefined,
+): string {
+  const parts: string[] = [];
+  if (watchedEpisodes && watchedEpisodes > 0) {
+    parts.push(`Watched ${watchedEpisodes}/${totalEpisodes}`);
+  }
+  if (languageOverride) {
+    parts.push(`${languageOverride} audio`);
+  }
+  return parts.join(" \u00b7 ");
+}
+
 interface SeasonCardProps {
   seriesTitle: string;
   seasonNumber: number;
@@ -11,6 +36,8 @@ interface SeasonCardProps {
   availableEpisodes: number;
   posterImageId: string | null;
   verdict: ReadinessVerdict;
+  watchedEpisodes?: number;
+  languageOverride?: string;
 }
 
 export function SeasonCard({
@@ -20,7 +47,13 @@ export function SeasonCard({
   availableEpisodes,
   posterImageId,
   verdict,
+  watchedEpisodes,
+  languageOverride,
 }: SeasonCardProps) {
+  const annotation = verdict.status === "ready"
+    ? buildAnnotations(watchedEpisodes, totalEpisodes, languageOverride)
+    : "";
+
   return (
     <div className="group overflow-hidden rounded-md border border-border bg-card transition-colors hover:border-primary/30">
       {/* Poster */}
@@ -48,16 +81,13 @@ export function SeasonCard({
         {verdict.status === "almost-ready" && (
           <ProgressBar
             value={verdict.progressPercent}
-            label={verdict.ruleResults
-              .filter((r) => !r.passed)
-              .map((r) => r.detail)
-              .join(", ")}
+            label={compactAlmostReadyLabel(verdict) || undefined}
           />
         )}
 
-        {verdict.status === "ready" && verdict.ruleResults.length > 0 && (
+        {annotation && (
           <p className="text-[10px] text-muted-foreground tv:text-xs">
-            {verdict.ruleResults.map((r) => r.detail).join(" · ")}
+            {annotation}
           </p>
         )}
       </div>
@@ -72,6 +102,8 @@ interface SeriesGroupCardProps {
   availableEpisodes: number;
   posterImageId: string | null;
   verdict: ReadinessVerdict;
+  watchedEpisodes?: number;
+  languageOverride?: string;
 }
 
 export function SeriesGroupCard({
@@ -81,7 +113,13 @@ export function SeriesGroupCard({
   availableEpisodes,
   posterImageId,
   verdict,
+  watchedEpisodes,
+  languageOverride,
 }: SeriesGroupCardProps) {
+  const annotation = verdict.status === "ready"
+    ? buildAnnotations(watchedEpisodes, totalEpisodes, languageOverride)
+    : "";
+
   return (
     <div className="group overflow-hidden rounded-md border border-border bg-card transition-colors hover:border-primary/30">
       {/* Poster */}
@@ -109,16 +147,13 @@ export function SeriesGroupCard({
         {verdict.status === "almost-ready" && (
           <ProgressBar
             value={verdict.progressPercent}
-            label={verdict.ruleResults
-              .filter((r) => !r.passed)
-              .map((r) => r.detail)
-              .join(", ")}
+            label={compactAlmostReadyLabel(verdict) || undefined}
           />
         )}
 
-        {verdict.status === "ready" && verdict.ruleResults.length > 0 && (
+        {annotation && (
           <p className="text-[10px] text-muted-foreground tv:text-xs">
-            {verdict.ruleResults.map((r) => r.detail).join(" · ")}
+            {annotation}
           </p>
         )}
       </div>

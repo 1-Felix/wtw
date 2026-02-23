@@ -77,6 +77,7 @@ describe("completeSeasonRule", () => {
     expect(result.ruleName).toBe("complete-season");
     expect(result.numerator).toBe(3);
     expect(result.denominator).toBe(3);
+    expect(result.compactDetail).toBe("");
   });
 
   it("fails when not all episodes have aired", () => {
@@ -96,6 +97,7 @@ describe("completeSeasonRule", () => {
     });
     const result = completeSeasonRule(season, defaultContext);
     expect(result.passed).toBe(false);
+    expect(result.compactDetail).toBe("");
   });
 
   it("fails when all episodes aired but some missing files", () => {
@@ -122,6 +124,7 @@ describe("completeSeasonRule", () => {
     expect(result.passed).toBe(false);
     expect(result.numerator).toBe(2);
     expect(result.denominator).toBe(3);
+    expect(result.compactDetail).toBe("");
   });
 
   it("reports correct progress for partially complete season", () => {

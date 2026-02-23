@@ -56,6 +56,7 @@ describe("languageAvailableSeasonRule", () => {
     expect(result.passed).toBe(true);
     expect(result.numerator).toBe(2);
     expect(result.denominator).toBe(2);
+    expect(result.compactDetail).toBe("eng audio");
   });
 
   it("fails when some episodes lack the target language", () => {
@@ -67,6 +68,7 @@ describe("languageAvailableSeasonRule", () => {
     expect(result.passed).toBe(false);
     expect(result.numerator).toBe(1);
     expect(result.denominator).toBe(2);
+    expect(result.compactDetail).toBe("1/2 eng audio");
   });
 
   it("treats episodes with no audio streams optimistically", () => {
@@ -99,6 +101,7 @@ describe("languageAvailableSeasonRule", () => {
     ]);
     const result = languageAvailableSeasonRule(season, context);
     expect(result.passed).toBe(true);
+    expect(result.compactDetail).toBe("jpn audio");
   });
 
   it("is case-insensitive for language matching", () => {
@@ -133,6 +136,7 @@ describe("languageAvailableMovieRule", () => {
 
     const result = languageAvailableMovieRule(movie, defaultContext);
     expect(result.passed).toBe(true);
+    expect(result.compactDetail).toBe("eng audio");
   });
 
   it("fails when movie lacks target language", () => {
@@ -157,6 +161,7 @@ describe("languageAvailableMovieRule", () => {
 
     const result = languageAvailableMovieRule(movie, defaultContext);
     expect(result.passed).toBe(false);
+    expect(result.compactDetail).toBe("eng audio not available");
   });
 
   it("passes optimistically when no audio streams exist", () => {
@@ -181,5 +186,6 @@ describe("languageAvailableMovieRule", () => {
 
     const result = languageAvailableMovieRule(movie, defaultContext);
     expect(result.passed).toBe(true);
+    expect(result.compactDetail).toBe("eng audio");
   });
 });

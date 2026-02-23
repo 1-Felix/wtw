@@ -18,6 +18,7 @@ export function fullyMonitoredRule(
       ruleName: RULE_NAME,
       passed: true,
       detail: "Sonarr not configured, rule skipped",
+      compactDetail: "",
       numerator: season.episodes.length,
       denominator: season.episodes.length,
     };
@@ -35,6 +36,9 @@ export function fullyMonitoredRule(
     detail: passed
       ? `All ${total} episodes monitored`
       : `${monitored}/${total} episodes monitored`,
+    compactDetail: passed
+      ? "monitored"
+      : `${monitored}/${total} monitored`,
     numerator: monitored,
     denominator: total,
   };

@@ -45,7 +45,7 @@ const LANGUAGE_ALIASES: Record<string, string[]> = {
  * Normalize a language string to its ISO 639-2 code.
  * Accepts full names ("English"), ISO codes ("eng", "en"), etc.
  */
-function normalizeLanguage(lang: string): string {
+export function normalizeLanguage(lang: string): string {
   const lower = lang.toLowerCase().trim();
 
   // Already an ISO 639-2 code?
@@ -104,11 +104,13 @@ export function languageAvailableSeasonRule(
       ruleName: RULE_NAME,
       passed: true,
       detail: "No episodes to check",
+      compactDetail: "",
       numerator: 0,
       denominator: 0,
     };
   }
 
+  const normalizedTarget = normalizeLanguage(targetLang);
   const passed = withLang >= total;
 
   return {
@@ -117,6 +119,9 @@ export function languageAvailableSeasonRule(
     detail: passed
       ? `All ${total} episodes have ${targetLang} audio`
       : `${withLang}/${total} episodes have ${targetLang} audio`,
+    compactDetail: passed
+      ? `${normalizedTarget} audio`
+      : `${withLang}/${total} ${normalizedTarget} audio`,
     numerator: withLang,
     denominator: total,
   };
@@ -128,12 +133,15 @@ export function languageAvailableMovieRule(
 ): RuleResult {
   const targetLang = context.config.languageTarget;
 
+  const normalizedTarget = normalizeLanguage(targetLang);
+
   // If no audio stream data, treat optimistically
   if (movie.audioStreams.length === 0) {
     return {
       ruleName: RULE_NAME,
       passed: true,
       detail: "No audio stream data available",
+      compactDetail: `${normalizedTarget} audio`,
       numerator: 1,
       denominator: 1,
     };
@@ -149,6 +157,9 @@ export function languageAvailableMovieRule(
     detail: hasTarget
       ? `${targetLang} audio available`
       : `${targetLang} audio not available`,
+    compactDetail: hasTarget
+      ? `${normalizedTarget} audio`
+      : `${normalizedTarget} audio not available`,
     numerator: hasTarget ? 1 : 0,
     denominator: 1,
   };
