@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { Slider } from "@/components/ui/slider";
 import {
   Select,
   SelectContent,
@@ -11,6 +12,37 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { RulesConfig } from "../schemas";
+
+const compositionModes = ["and", "or"] as const;
+
+function isCompositionMode(value: string): value is RulesConfig["compositionMode"] {
+  return (compositionModes as readonly string[]).includes(value);
+}
+
+function getThresholdExplanation(
+  enabledCount: number,
+  thresholdPercent: number,
+): string {
+  if (enabledCount === 0) {
+    return "No rules enabled \u2014 all items are Ready";
+  }
+
+  if (enabledCount === 1) {
+    return "With 1 rule enabled: items are either Ready or Not Ready";
+  }
+
+  if (thresholdPercent === 0) {
+    return "All non-ready items will appear as Almost Ready";
+  }
+
+  if (thresholdPercent >= 100) {
+    return "No Almost Ready category \u2014 items are either Ready or Not Ready";
+  }
+
+  // Progress is a weighted average across rules (e.g. 9/10 episodes + 1/1 language = 10/11 ≈ 91%).
+  // Show the threshold as a concrete percentage that progress must reach.
+  return `Items that are at least ${thresholdPercent}% complete across ${enabledCount} rules will appear as Almost Ready`;
+}
 
 export function RulesSection({
   config,
@@ -135,6 +167,71 @@ export function RulesSection({
           )}
         </div>
       ))}
+
+      <Separator className="my-2" />
+
+      <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+        How Rules Combine
+      </h3>
+
+      {/* Composition Mode */}
+      <div className="rounded-md border border-border bg-surface p-4">
+        <label className="mb-1 block text-sm font-medium text-foreground">
+          Composition Mode
+        </label>
+        <p className="mb-2 text-xs text-muted-foreground">
+          How enabled rules are combined to determine readiness
+        </p>
+        <Select
+          value={config.compositionMode}
+          onValueChange={(value) => {
+            if (isCompositionMode(value)) {
+              onChange({ ...config, compositionMode: value });
+            }
+          }}
+        >
+          <SelectTrigger className="max-w-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="and">AND &mdash; All rules must pass</SelectItem>
+            <SelectItem value="or">OR &mdash; Any rule can pass</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Almost Ready Threshold */}
+      <div className="rounded-md border border-border bg-surface p-4">
+        <label className="mb-1 block text-sm font-medium text-foreground">
+          Almost Ready Threshold:{" "}
+          <span className="text-primary">
+            {Math.round(config.almostReadyThreshold * 100)}%
+          </span>
+        </label>
+        <p className="mb-2 text-xs text-muted-foreground">
+          Items with progress above this threshold appear as &ldquo;Almost
+          Ready&rdquo;
+        </p>
+        <Slider
+          value={[Math.round(config.almostReadyThreshold * 100)]}
+          onValueChange={(value) =>
+            onChange({
+              ...config,
+              almostReadyThreshold: value[0] / 100,
+            })
+          }
+          min={0}
+          max={100}
+          step={5}
+          className="max-w-xs"
+        />
+        <p className="mt-3 text-xs text-muted-foreground">
+          {getThresholdExplanation(
+            [config.rules.completeSeason, config.rules.languageAvailable, config.rules.fullyMonitored].filter(Boolean).length,
+            Math.round(config.almostReadyThreshold * 100),
+          )}
+        </p>
+      </div>
 
       <Separator className="my-2" />
 

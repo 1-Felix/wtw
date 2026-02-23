@@ -68,7 +68,7 @@ const defaultContext: RuleContext = {
     languageTarget: "English",
     almostReadyThreshold: 0.8,
     compositionMode: "and",
-    overrides: {},
+    hideWatched: true,
   } as RulesConfig,
 };
 

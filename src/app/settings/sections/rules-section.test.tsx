@@ -35,6 +35,33 @@ vi.mock("@/components/ui/separator", () => ({
   Separator: () => <hr data-testid="separator" />,
 }));
 
+vi.mock("@/components/ui/slider", () => ({
+  Slider: ({
+    value,
+    onValueChange,
+    min,
+    max,
+    step,
+  }: {
+    value: number[];
+    onValueChange?: (v: number[]) => void;
+    min?: number;
+    max?: number;
+    step?: number;
+    className?: string;
+  }) => (
+    <input
+      type="range"
+      data-testid="threshold-slider"
+      value={value[0]}
+      min={min}
+      max={max}
+      step={step}
+      onChange={(e) => onValueChange?.([Number(e.target.value)])}
+    />
+  ),
+}));
+
 vi.mock("@/components/ui/select", () => ({
   Select: ({
     children,
@@ -93,7 +120,6 @@ function makeConfig(overrides?: Partial<RulesConfig>): RulesConfig {
     languageTarget: "English",
     almostReadyThreshold: 0.8,
     compositionMode: "and",
-    overrides: {},
     hideWatched: false,
     ...overrides,
   };
@@ -146,8 +172,10 @@ describe("RulesSection", () => {
       render(<RulesSection config={config} onChange={vi.fn()} />);
 
       expect(screen.getByText("Target Audio Language")).toBeInTheDocument();
-      // The skeleton is an animate-pulse div, not a select
-      expect(screen.queryByTestId("language-select")).not.toBeInTheDocument();
+      // The skeleton is an animate-pulse div; the only select present should be the composition mode one
+      const selects = screen.getAllByTestId("language-select");
+      // Only the composition mode select should exist, not the language picker
+      expect(selects).toHaveLength(1);
     });
 
     it("shows disabled dropdown with 'Sync media first' when no languages available", async () => {
@@ -172,11 +200,16 @@ describe("RulesSection", () => {
       render(<RulesSection config={config} onChange={onChange} />);
 
       await waitFor(() => {
-        expect(screen.getByTestId("language-select")).toBeInTheDocument();
+        // Two selects: composition mode + language picker
+        expect(screen.getAllByTestId("language-select")).toHaveLength(2);
       });
 
       const user = userEvent.setup();
-      await user.selectOptions(screen.getByTestId("language-select"), "German");
+      // The language picker is the second select (composition mode is first)
+      const selects = screen.getAllByTestId("language-select");
+      const languageSelect = selects.find(el => el.querySelector('option[value="German"]'));
+      expect(languageSelect).toBeTruthy();
+      await user.selectOptions(languageSelect!, "German");
 
       expect(onChange).toHaveBeenCalledWith(
         expect.objectContaining({ languageTarget: "German" }),

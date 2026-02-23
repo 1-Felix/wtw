@@ -4,11 +4,6 @@ import type { RulesConfig } from "@/lib/config/rules";
 
 export interface RuleContext {
   config: RulesConfig;
-  /** Override config for this specific series (if any) */
-  seriesOverride?: {
-    disabledRules?: string[];
-    languageTarget?: string;
-  };
 }
 
 /** A rule function that evaluates a season */

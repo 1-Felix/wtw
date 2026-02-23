@@ -11,13 +11,7 @@ export const rulesConfigSchema = z.object({
   languageTarget: z.string(),
   almostReadyThreshold: z.number(),
   compositionMode: z.enum(["and", "or"]),
-  overrides: z.record(
-    z.string(),
-    z.object({
-      disabledRules: z.array(z.string()).optional(),
-      languageTarget: z.string().optional(),
-    })
-  ),
+
   hideWatched: z.boolean(),
 });
 
@@ -63,10 +57,8 @@ export type DismissedItem = z.infer<typeof dismissedItemSchema>;
 export type HealthResponse = z.infer<typeof healthResponseSchema>;
 
 export type SettingsSection =
-  | "services"
   | "rules"
-  | "language"
-  | "overrides"
+  | "services"
   | "notifications"
   | "dismissed"
   | "about";

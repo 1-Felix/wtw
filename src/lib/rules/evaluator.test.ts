@@ -10,10 +10,8 @@ vi.mock("@/lib/config/rules", () => ({
     languageTarget: "English",
     almostReadyThreshold: 0.8,
     compositionMode: "and" as const,
-    overrides: {},
     hideWatched: true,
   })),
-  getSeriesOverride: vi.fn(() => undefined),
 }));
 
 afterEach(() => {
@@ -22,7 +20,6 @@ afterEach(() => {
     languageTarget: "English",
     almostReadyThreshold: 0.8,
     compositionMode: "and" as const,
-    overrides: {},
     hideWatched: true,
   });
 });
@@ -126,7 +123,6 @@ describe("evaluateSeason", () => {
       languageTarget: "English",
       almostReadyThreshold: 0.95,
       compositionMode: "and" as const,
-      overrides: {},
       hideWatched: true,
     });
 
@@ -148,42 +144,12 @@ describe("evaluateSeason", () => {
     expect(verdict.status).toBe("not-ready");
   });
 
-  it("skips rules listed in per-series disabledRules override", () => {
-    vi.mocked(rulesConfig.getSeriesOverride).mockReturnValue({
-      disabledRules: ["complete-season"],
-    });
-
-    // Season is incomplete but complete-season rule is disabled
-    const season: Season = {
-      seasonNumber: 1,
-      title: "Season 1",
-      totalEpisodes: 3,
-      availableEpisodes: 1,
-      airedEpisodes: 3,
-      episodes: [
-        makeEpisode(1),
-        makeEpisode(2, { hasFile: false }),
-        makeEpisode(3, { hasFile: false }),
-      ],
-    };
-    const series = makeSeries([season]);
-    const verdict = evaluateSeason(season, series);
-    // complete-season skipped; language + monitored should pass
-    expect(verdict.status).toBe("ready");
-    // Should not include a complete-season result
-    const ruleNames = verdict.ruleResults.map((r) => r.ruleName);
-    expect(ruleNames).not.toContain("complete-season");
-
-    vi.mocked(rulesConfig.getSeriesOverride).mockReturnValue(undefined);
-  });
-
   it("uses 'or' composition mode — passes if any rule passes", () => {
     vi.mocked(rulesConfig.getRulesConfig).mockReturnValue({
       rules: { completeSeason: true, languageAvailable: true, fullyMonitored: true },
       languageTarget: "English",
       almostReadyThreshold: 0.8,
       compositionMode: "or" as const,
-      overrides: {},
       hideWatched: true,
     });
 
@@ -212,7 +178,6 @@ describe("evaluateSeason", () => {
       languageTarget: "English",
       almostReadyThreshold: 0.8,
       compositionMode: "and" as const,
-      overrides: {},
       hideWatched: true,
     });
 

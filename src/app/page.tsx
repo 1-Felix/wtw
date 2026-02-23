@@ -5,10 +5,9 @@ import type { SeasonItem, MovieItem } from "@/components/media-grid-view";
 import { getCache } from "@/lib/sync/cache";
 import { evaluateSeason, evaluateMovie } from "@/lib/rules/evaluator";
 import { getDismissedIds } from "@/lib/db/dismissed";
-import { getRulesConfig, getSeriesOverride } from "@/lib/config/rules";
+import { getRulesConfig } from "@/lib/config/rules";
 import { isSeasonWatched } from "@/lib/models/media";
 import { groupSeasonsBySeries } from "@/lib/series-grouping";
-import { normalizeLanguage } from "@/lib/rules/language-available";
 import { PageTitle } from "@/components/page-title";
 
 export const dynamic = "force-dynamic";
@@ -26,16 +25,7 @@ export default function ReadyToWatchPage() {
   const readySeasons: SeasonItem[] = [];
   const readyMovies: MovieItem[] = [];
 
-  const globalLangNormalized = normalizeLanguage(config.languageTarget);
-
   for (const series of cache.series) {
-    const override = getSeriesOverride(series.title, series.tvdbId ?? undefined);
-    const overrideLang = override?.languageTarget;
-    const languageOverride =
-      overrideLang && normalizeLanguage(overrideLang) !== globalLangNormalized
-        ? normalizeLanguage(overrideLang)
-        : undefined;
-
     for (const season of series.seasons) {
       if (season.episodes.length === 0) continue;
       const seasonKey = `${series.id}-s${season.seasonNumber}`;
@@ -72,7 +62,7 @@ export default function ReadyToWatchPage() {
           episodes,
           watchedEpisodes,
           lastPlayedAt,
-          languageOverride,
+          languageOverride: undefined,
         });
       }
     }

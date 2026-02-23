@@ -1,13 +1,6 @@
 import { z } from "zod/v4";
 import fs from "node:fs";
 
-const ruleOverrideSchema = z.object({
-  /** Disable specific rules for this series */
-  disabledRules: z.array(z.string()).optional(),
-  /** Override language target for this series */
-  languageTarget: z.string().optional(),
-});
-
 const rulesConfigSchema = z.object({
   /** Global rule toggles */
   rules: z
@@ -31,16 +24,12 @@ const rulesConfigSchema = z.object({
   /** Rule composition mode */
   compositionMode: z.enum(["and", "or"]).default("and"),
 
-  /** Per-series overrides keyed by series title or TVDB ID */
-  overrides: z.record(z.string(), ruleOverrideSchema).default({}),
-
   /** Whether to hide fully-watched items from dashboard views */
   hideWatched: z.boolean().default(true),
 });
 
-export { rulesConfigSchema, ruleOverrideSchema };
+export { rulesConfigSchema };
 export type RulesConfig = z.infer<typeof rulesConfigSchema>;
-export type RuleOverride = z.infer<typeof ruleOverrideSchema>;
 
 const CONFIG_PATH = "/config/rules.json";
 const DEFAULT_CONFIG: RulesConfig = rulesConfigSchema.parse({});
@@ -116,18 +105,6 @@ export function reloadRulesConfig(): RulesConfig {
   return loadRulesConfig();
 }
 
-/** Get override for a specific series, matching by title or TVDB ID */
-export function getSeriesOverride(
-  seriesTitle: string,
-  tvdbId?: string
-): RuleOverride | undefined {
-  const config = getRulesConfig();
-  return (
-    config.overrides[seriesTitle] ??
-    (tvdbId ? config.overrides[tvdbId] : undefined)
-  );
-}
-
 // --- Internal helpers ---
 
 function loadFromDatabase(): RulesConfig | null {
@@ -163,9 +140,6 @@ function loadFromDatabase(): RulesConfig | null {
     }
     if (settings["compositionMode"] !== undefined) {
       partial.compositionMode = settings["compositionMode"];
-    }
-    if (settings["overrides"] !== undefined) {
-      partial.overrides = settings["overrides"];
     }
     if (settings["hideWatched"] !== undefined) {
       partial.hideWatched = settings["hideWatched"];
@@ -223,7 +197,6 @@ function importToDatabase(config: RulesConfig): void {
       "languageTarget": config.languageTarget,
       "almostReadyThreshold": config.almostReadyThreshold,
       "compositionMode": config.compositionMode,
-      "overrides": config.overrides,
       "hideWatched": config.hideWatched,
     };
 

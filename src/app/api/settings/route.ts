@@ -17,15 +17,6 @@ const settingsUpdateSchema = z.object({
   languageTarget: z.string().optional(),
   almostReadyThreshold: z.number().min(0).max(1).optional(),
   compositionMode: z.enum(["and", "or"]).optional(),
-  overrides: z
-    .record(
-      z.string(),
-      z.object({
-        disabledRules: z.array(z.string()).optional(),
-        languageTarget: z.string().optional(),
-      })
-    )
-    .optional(),
   hideWatched: z.boolean().optional(),
 });
 
@@ -52,7 +43,6 @@ export async function GET() {
       languageTarget: raw["languageTarget"] ?? "English",
       almostReadyThreshold: raw["almostReadyThreshold"] ?? 0.8,
       compositionMode: raw["compositionMode"] ?? "and",
-      overrides: raw["overrides"] ?? {},
       hideWatched: raw["hideWatched"] ?? true,
     };
 
@@ -115,9 +105,6 @@ export async function PUT(request: Request) {
     if (update.compositionMode !== undefined) {
       merged["compositionMode"] = update.compositionMode;
     }
-    if (update.overrides !== undefined) {
-      merged["overrides"] = update.overrides;
-    }
     if (update.hideWatched !== undefined) {
       merged["hideWatched"] = update.hideWatched;
     }
@@ -138,7 +125,6 @@ export async function PUT(request: Request) {
       languageTarget: merged["languageTarget"] ?? "English",
       almostReadyThreshold: merged["almostReadyThreshold"] ?? 0.8,
       compositionMode: merged["compositionMode"] ?? "and",
-      overrides: merged["overrides"] ?? {},
       hideWatched: merged["hideWatched"] ?? true,
     };
 

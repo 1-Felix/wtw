@@ -11,18 +11,14 @@ import { PageTitle } from "@/components/page-title";
 import { useSettings } from "./hooks/use-settings";
 import type { SettingsSection } from "./schemas";
 import { RulesSection } from "./sections/rules-section";
-import { LanguageSection } from "./sections/language-section";
-import { OverridesSection } from "./sections/overrides-section";
 import { NotificationsSection } from "./sections/notifications-section";
 import { DismissedSection } from "./sections/dismissed-section";
 import { AboutSection } from "./sections/about-section";
 import { ServicesSection } from "./sections/services-section";
 
 const sections: { id: SettingsSection; label: string }[] = [
-  { id: "services", label: "Services" },
   { id: "rules", label: "Rules" },
-  { id: "language", label: "Language" },
-  { id: "overrides", label: "Overrides" },
+  { id: "services", label: "Services" },
   { id: "notifications", label: "Notifications" },
   { id: "dismissed", label: "Dismissed" },
   { id: "about", label: "About" },
@@ -37,7 +33,7 @@ function SettingsContent() {
   const [activeTab, setActiveTab] = useState<string>(() => {
     const param = searchParams.get("tab");
     if (param && validTabs.has(param as SettingsSection)) return param;
-    return "services";
+    return "rules";
   });
 
   const {
@@ -85,12 +81,7 @@ function SettingsContent() {
         <TabsContent value="rules">
           <RulesSection config={config} onChange={setConfig} />
         </TabsContent>
-        <TabsContent value="language">
-          <LanguageSection config={config} onChange={setConfig} />
-        </TabsContent>
-        <TabsContent value="overrides">
-          <OverridesSection config={config} onChange={setConfig} />
-        </TabsContent>
+
         <TabsContent value="notifications">
           <NotificationsSection
             webhooks={webhooks}

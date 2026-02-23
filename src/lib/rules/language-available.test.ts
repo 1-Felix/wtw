@@ -9,7 +9,7 @@ const defaultConfig: RulesConfig = {
   languageTarget: "English",
   almostReadyThreshold: 0.8,
   compositionMode: "and",
-  overrides: {},
+  hideWatched: true,
 } as RulesConfig;
 
 const defaultContext: RuleContext = { config: defaultConfig };
@@ -91,10 +91,9 @@ describe("languageAvailableSeasonRule", () => {
     expect(result.denominator).toBe(1);
   });
 
-  it("uses series override language target", () => {
+  it("uses configured language target", () => {
     const context: RuleContext = {
-      config: defaultConfig,
-      seriesOverride: { languageTarget: "Japanese" },
+      config: { ...defaultConfig, languageTarget: "Japanese" },
     };
     const season = makeSeason([
       makeEpisode(1, ["Japanese"]),

@@ -1,7 +1,7 @@
 import type { Season, Series, Movie } from "@/lib/models/media";
 import type { ReadinessVerdict, RuleResult } from "@/lib/models/readiness";
 import type { RuleContext } from "./types";
-import { getRulesConfig, getSeriesOverride } from "@/lib/config/rules";
+import { getRulesConfig } from "@/lib/config/rules";
 import { completeSeasonRule } from "./complete-season";
 import { languageAvailableSeasonRule, languageAvailableMovieRule } from "./language-available";
 import { fullyMonitoredRule } from "./fully-monitored";
@@ -12,24 +12,17 @@ export function evaluateSeason(
   series: Series
 ): ReadinessVerdict {
   const config = getRulesConfig();
-  const override = getSeriesOverride(series.title, series.tvdbId ?? undefined);
-  const disabledRules = new Set(override?.disabledRules ?? []);
-
-  const context: RuleContext = {
-    config,
-    seriesOverride: override,
-  };
-
+  const context: RuleContext = { config };
   const results: RuleResult[] = [];
 
-  // Apply enabled rules (skip disabled ones)
-  if (config.rules.completeSeason && !disabledRules.has("complete-season")) {
+  // Apply enabled rules
+  if (config.rules.completeSeason) {
     results.push(completeSeasonRule(season, context));
   }
-  if (config.rules.languageAvailable && !disabledRules.has("language-available")) {
+  if (config.rules.languageAvailable) {
     results.push(languageAvailableSeasonRule(season, context));
   }
-  if (config.rules.fullyMonitored && !disabledRules.has("fully-monitored")) {
+  if (config.rules.fullyMonitored) {
     results.push(fullyMonitoredRule(season, context));
   }
 

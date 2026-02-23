@@ -77,8 +77,7 @@ export function languageAvailableSeasonRule(
   season: Season,
   context: RuleContext
 ): RuleResult {
-  const targetLang =
-    context.seriesOverride?.languageTarget ?? context.config.languageTarget;
+  const targetLang = context.config.languageTarget;
 
   let withLang = 0;
   let total = 0;
