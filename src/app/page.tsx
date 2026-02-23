@@ -37,6 +37,7 @@ export default function ReadyToWatchPage() {
         : undefined;
 
     for (const season of series.seasons) {
+      if (season.episodes.length === 0) continue;
       const seasonKey = `${series.id}-s${season.seasonNumber}`;
       if (dismissedIds.has(seasonKey)) continue;
       if (config.hideWatched && isSeasonWatched(season)) continue;

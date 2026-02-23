@@ -161,4 +161,18 @@ describe("completeSeasonRule", () => {
     expect(result.numerator).toBe(3);
     expect(result.denominator).toBe(4);
   });
+
+  it("fails when season has 0 total episodes", () => {
+    const season = makeSeason({
+      totalEpisodes: 0,
+      availableEpisodes: 0,
+      airedEpisodes: 0,
+      episodes: [],
+    });
+    const result = completeSeasonRule(season, defaultContext);
+    expect(result.passed).toBe(false);
+    expect(result.detail).toBe("No episodes in season");
+    expect(result.numerator).toBe(0);
+    expect(result.denominator).toBe(0);
+  });
 });

@@ -28,6 +28,7 @@ export function getNavCounts(): NavCounts {
 
   for (const series of cache.series) {
     for (const season of series.seasons) {
+      if (season.episodes.length === 0) continue;
       if (config.hideWatched && isSeasonWatched(season)) continue;
       const verdict = evaluateSeason(season, series);
       if (verdict.status === "ready") {

@@ -9,6 +9,19 @@ export function completeSeasonRule(
   _context: RuleContext
 ): RuleResult {
   const totalExpected = season.totalEpisodes;
+
+  // A season with 0 episodes is never complete
+  if (totalExpected === 0) {
+    return {
+      ruleName: RULE_NAME,
+      passed: false,
+      detail: "No episodes in season",
+      compactDetail: "",
+      numerator: 0,
+      denominator: 0,
+    };
+  }
+
   const available = season.episodes.filter((e) => e.hasFile).length;
   const allAired = season.episodes.every((e) => e.hasAired);
 
