@@ -44,9 +44,12 @@ export function LanguageSection({
 
       {/* Language Target */}
       <div className="rounded-md border border-border bg-surface p-4">
-        <label className="mb-2 block text-sm font-medium text-foreground">
+        <label className="mb-1 block text-sm font-medium text-foreground">
           Target Audio Language
         </label>
+        <p className="mb-2 text-xs text-muted-foreground">
+          Audio language required when the language rule is enabled
+        </p>
         {catalogLoading ? (
           <div className="h-9 max-w-xs animate-pulse rounded-md bg-muted" />
         ) : hasOptions ? (
@@ -88,9 +91,12 @@ export function LanguageSection({
 
       {/* Composition Mode */}
       <div className="rounded-md border border-border bg-surface p-4">
-        <label className="mb-2 block text-sm font-medium text-foreground">
+        <label className="mb-1 block text-sm font-medium text-foreground">
           Composition Mode
         </label>
+        <p className="mb-2 text-xs text-muted-foreground">
+          How enabled rules are combined to determine readiness
+        </p>
         <Select
           value={config.compositionMode}
           onValueChange={(value) =>
@@ -112,12 +118,16 @@ export function LanguageSection({
 
       {/* Threshold Slider */}
       <div className="rounded-md border border-border bg-surface p-4">
-        <label className="mb-2 block text-sm font-medium text-foreground">
+        <label className="mb-1 block text-sm font-medium text-foreground">
           Almost Ready Threshold:{" "}
           <span className="text-primary">
             {Math.round(config.almostReadyThreshold * 100)}%
           </span>
         </label>
+        <p className="mb-2 text-xs text-muted-foreground">
+          Items with progress above this threshold appear as &ldquo;Almost
+          Ready&rdquo;
+        </p>
         <Slider
           value={[Math.round(config.almostReadyThreshold * 100)]}
           onValueChange={(value) =>
@@ -131,10 +141,6 @@ export function LanguageSection({
           step={5}
           className="max-w-xs"
         />
-        <p className="mt-2 text-xs text-muted-foreground">
-          Items with progress above this threshold appear as &ldquo;Almost
-          Ready&rdquo;
-        </p>
       </div>
     </section>
   );
