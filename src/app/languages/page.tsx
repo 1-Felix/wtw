@@ -191,11 +191,14 @@ export default function LanguagesPage() {
     [expandedSeriesId],
   );
 
+  // Resolved target language for the "only show incomplete" filter.
+  // Lifted out of the memo so it can be displayed in the UI.
+  const incompleteTarget =
+    audioFilter !== ANY ? audioFilter : targetLanguage || null;
+
   // Filter series list
   const filteredSeries = useMemo(() => {
     const searchLower = search.toLowerCase();
-    const incompleteTarget =
-      audioFilter !== ANY ? audioFilter : targetLanguage || null;
 
     return seriesList.filter((s) => {
       // Text search
@@ -224,7 +227,7 @@ export default function LanguagesPage() {
       }
       return true;
     });
-  }, [seriesList, search, audioFilter, subtitleFilter, onlyIncomplete, targetLanguage]);
+  }, [seriesList, search, audioFilter, subtitleFilter, onlyIncomplete, incompleteTarget]);
 
   if (!syncReady) {
     return <SyncGuardSpinner />;
@@ -281,15 +284,23 @@ export default function LanguagesPage() {
             </Select>
           </div>
 
-          <label className="flex items-center gap-2 text-xs text-muted-foreground">
-            <input
-              type="checkbox"
-              checked={onlyIncomplete}
-              onChange={(e) => setOnlyIncomplete(e.target.checked)}
-              className="rounded border-border accent-primary"
-            />
-            Only show incomplete
-          </label>
+          <div className="flex items-center gap-2">
+            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={onlyIncomplete}
+                onChange={(e) => setOnlyIncomplete(e.target.checked)}
+                disabled={!incompleteTarget}
+                className="rounded border-border accent-primary disabled:opacity-50"
+              />
+              Only show incomplete
+            </label>
+            <span className="text-[11px] text-muted-foreground/70">
+              {incompleteTarget
+                ? `(Checking: ${incompleteTarget})`
+                : "(Set a target language in Settings)"}
+            </span>
+          </div>
         </div>
 
         <p className="text-xs text-muted-foreground">
@@ -303,7 +314,9 @@ export default function LanguagesPage() {
           <p className="text-muted-foreground">
             {seriesList.length === 0
               ? "No series available. Sync media first."
-              : "No series match the current filters."}
+              : onlyIncomplete && incompleteTarget
+                ? `All series are complete for ${incompleteTarget}.`
+                : "No series match the current filters."}
           </p>
         </div>
       )}
@@ -363,7 +376,15 @@ export default function LanguagesPage() {
                   )}
 
                   {!loadingDetail && languageData && (
-                    <LanguageGrid data={languageData} />
+                    <LanguageGrid
+                      data={languageData}
+                      highlightAudioLang={
+                        audioFilter !== ANY ? audioFilter : undefined
+                      }
+                      highlightSubtitleLang={
+                        subtitleFilter !== ANY ? subtitleFilter : undefined
+                      }
+                    />
                   )}
                 </div>
               )}
@@ -377,7 +398,15 @@ export default function LanguagesPage() {
 
 // --- Language Grid sub-component ---
 
-function LanguageGrid({ data }: { data: LanguageData }) {
+function LanguageGrid({
+  data,
+  highlightAudioLang,
+  highlightSubtitleLang,
+}: {
+  data: LanguageData;
+  highlightAudioLang?: string;
+  highlightSubtitleLang?: string;
+}) {
   return (
     <div className="space-y-6">
       {data.seasons.map((season) => {
@@ -390,6 +419,16 @@ function LanguageGrid({ data }: { data: LanguageData }) {
         const subtitleLanguages = Array.from(allSubtitleLangs).sort();
         const hasAnyData =
           season.languages.length > 0 || subtitleLanguages.length > 0;
+
+        // Determine whether to apply column de-emphasis.
+        // If the highlighted language isn't present in this season, skip
+        // de-emphasis entirely (all columns stay full opacity).
+        const applyAudioDim =
+          highlightAudioLang != null &&
+          season.languages.includes(highlightAudioLang);
+        const applySubDim =
+          highlightSubtitleLang != null &&
+          subtitleLanguages.includes(highlightSubtitleLang);
 
         return (
           <section key={season.seasonNumber}>
@@ -428,22 +467,30 @@ function LanguageGrid({ data }: { data: LanguageData }) {
                     </tr>
                     <tr className="border-b border-border">
                       <th className="px-2 py-1.5 text-left font-medium text-muted-foreground" />
-                      {season.languages.map((lang) => (
-                        <th
-                          key={`audio-${lang}`}
-                          className="px-2 py-1.5 text-center font-medium text-muted-foreground"
-                        >
-                          {lang}
-                        </th>
-                      ))}
-                      {subtitleLanguages.map((lang) => (
-                        <th
-                          key={`sub-${lang}`}
-                          className="px-2 py-1.5 text-center font-medium text-muted-foreground/70"
-                        >
-                          {lang}
-                        </th>
-                      ))}
+                      {season.languages.map((lang) => {
+                        const dimmed =
+                          applyAudioDim && lang !== highlightAudioLang;
+                        return (
+                          <th
+                            key={`audio-${lang}`}
+                            className={`px-2 py-1.5 text-center font-medium text-muted-foreground${dimmed ? " opacity-30" : ""}`}
+                          >
+                            {lang}
+                          </th>
+                        );
+                      })}
+                      {subtitleLanguages.map((lang) => {
+                        const dimmed =
+                          applySubDim && lang !== highlightSubtitleLang;
+                        return (
+                          <th
+                            key={`sub-${lang}`}
+                            className={`px-2 py-1.5 text-center font-medium text-muted-foreground/70${dimmed ? " opacity-30" : ""}`}
+                          >
+                            {lang}
+                          </th>
+                        );
+                      })}
                     </tr>
                   </thead>
                   <tbody>
@@ -460,30 +507,38 @@ function LanguageGrid({ data }: { data: LanguageData }) {
                             </span>{" "}
                             {ep.title}
                           </td>
-                          {season.languages.map((lang) => (
-                            <td
-                              key={`audio-${lang}`}
-                              className="px-2 py-1.5 text-center"
-                            >
-                              {ep.languages[lang] ? (
-                                <span className="inline-block h-3 w-3 rounded-sm bg-primary" />
-                              ) : (
-                                <span className="inline-block h-3 w-3 rounded-sm bg-muted" />
-                              )}
-                            </td>
-                          ))}
-                          {subtitleLanguages.map((lang) => (
-                            <td
-                              key={`sub-${lang}`}
-                              className="px-2 py-1.5 text-center"
-                            >
-                              {epSubtitleSet.has(lang) ? (
-                                <span className="inline-block h-3 w-3 rounded-sm bg-primary/60" />
-                              ) : (
-                                <span className="inline-block h-3 w-3 rounded-sm bg-muted" />
-                              )}
-                            </td>
-                          ))}
+                          {season.languages.map((lang) => {
+                            const dimmed =
+                              applyAudioDim && lang !== highlightAudioLang;
+                            return (
+                              <td
+                                key={`audio-${lang}`}
+                                className={`px-2 py-1.5 text-center${dimmed ? " opacity-30" : ""}`}
+                              >
+                                {ep.languages[lang] ? (
+                                  <span className="inline-block h-3 w-3 rounded-sm bg-primary" />
+                                ) : (
+                                  <span className="inline-block h-3 w-3 rounded-sm bg-muted" />
+                                )}
+                              </td>
+                            );
+                          })}
+                          {subtitleLanguages.map((lang) => {
+                            const dimmed =
+                              applySubDim && lang !== highlightSubtitleLang;
+                            return (
+                              <td
+                                key={`sub-${lang}`}
+                                className={`px-2 py-1.5 text-center${dimmed ? " opacity-30" : ""}`}
+                              >
+                                {epSubtitleSet.has(lang) ? (
+                                  <span className="inline-block h-3 w-3 rounded-sm bg-primary/60" />
+                                ) : (
+                                  <span className="inline-block h-3 w-3 rounded-sm bg-muted" />
+                                )}
+                              </td>
+                            );
+                          })}
                         </tr>
                       );
                     })}
