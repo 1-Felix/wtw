@@ -45,7 +45,19 @@ export type RuleOverride = z.infer<typeof ruleOverrideSchema>;
 const CONFIG_PATH = "/config/rules.json";
 const DEFAULT_CONFIG: RulesConfig = rulesConfigSchema.parse({});
 
-let cachedRulesConfig: RulesConfig | null = null;
+/**
+ * Use globalThis to ensure a single cache instance across all module
+ * evaluation contexts. In Next.js standalone mode, the bundler may create
+ * separate module instances for API route handlers vs Server Component
+ * rendering. globalThis is per-process, so it bridges that gap.
+ */
+const RULES_CONFIG_KEY = "__wtw_rules_config" as const;
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __wtw_rules_config: RulesConfig | null | undefined;
+}
+
 let lastConfigError: string | null = null;
 let rulesJsonImported = false;
 
@@ -71,8 +83,8 @@ export function loadRulesConfig(): RulesConfig {
       console.log("Database settings take precedence over rules.json. Edit settings through the web UI.");
     }
     lastConfigError = null;
-    cachedRulesConfig = dbConfig;
-    return cachedRulesConfig;
+    globalThis[RULES_CONFIG_KEY] = dbConfig;
+    return dbConfig;
   }
 
   // 2. Try loading from rules.json file (and import to DB if available)
@@ -81,25 +93,26 @@ export function loadRulesConfig(): RulesConfig {
     importToDatabase(fileConfig);
     rulesJsonImported = true;
     lastConfigError = null;
-    cachedRulesConfig = fileConfig;
-    return cachedRulesConfig;
+    globalThis[RULES_CONFIG_KEY] = fileConfig;
+    return fileConfig;
   }
 
   // 3. Use defaults
   console.log("No rules config found in database or file, using defaults.");
   lastConfigError = null;
-  cachedRulesConfig = DEFAULT_CONFIG;
-  return cachedRulesConfig;
+  globalThis[RULES_CONFIG_KEY] = DEFAULT_CONFIG;
+  return DEFAULT_CONFIG;
 }
 
 export function getRulesConfig(): RulesConfig {
-  if (cachedRulesConfig) return cachedRulesConfig;
+  const cached = globalThis[RULES_CONFIG_KEY];
+  if (cached) return cached;
   return loadRulesConfig();
 }
 
 /** Reload config (called on each sync cycle). Clears cache to force re-read from DB. */
 export function reloadRulesConfig(): RulesConfig {
-  cachedRulesConfig = null;
+  globalThis[RULES_CONFIG_KEY] = null;
   return loadRulesConfig();
 }
 
