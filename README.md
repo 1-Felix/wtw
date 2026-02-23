@@ -14,25 +14,22 @@
 
 ---
 
-wtw applies configurable readiness rules — like waiting for a complete season or a preferred audio language — so you only see media that's actually ready. It syncs data from your services on a schedule, evaluates each season and movie, and presents the results in a clean dashboard.
+wtw syncs your media services on a schedule and evaluates each season and movie against configurable readiness rules — like requiring a complete season, a preferred audio language, or full monitoring in Sonarr — so you only see media that's actually ready to watch.
 
 ![Ready to Watch](docs/screenshots/ready-to-watch.png)
 
 ## Features
 
-- **Ready to Watch** — series seasons and movies that pass all your readiness checks
+- **Ready to Watch** — series and movies that pass all your readiness checks
 - **Almost Ready** — items close to meeting criteria with progress indicators
 - **Continue Watching** — in-progress items based on Jellyfin watch history
 - **Language Overview** — per-episode audio/subtitle language breakdown grid
-- **Detail Panel** — click any card to see rule results, episode status, and languages
-- **Settings UI** — configure rules, language targets, overrides, and webhooks from the browser
+- **Detail Panel** — rule results, episode status, and language info per item
+- **Search, Filter & Sort** — find items by title, filter by type, sort by date or name
+- **Setup Wizard** — guided first-run experience to connect your services from the browser
+- **Settings UI** — configure rules, language targets, per-series overrides, and webhooks
 - **Discord & Webhook Notifications** — get notified when media becomes ready
-- **Dismiss Items** — hide items you don't want to see, undo anytime from Settings
-- **Mobile-First** — responsive layout with bottom tab bar, swipe-to-dismiss detail panel
-- **Configurable Rules** — complete season, language availability, fully monitored, with per-series overrides
-- **Graceful Degradation** — if Sonarr or Radarr goes down, last known data is retained
-- **Read-Only** — never mutates data on any connected service
-- **SQLite Persistence** — settings, dismissed items, and notification history survive container restarts
+- **Mobile-First** — responsive layout with bottom tab bar and swipe gestures
 
 <details>
 <summary>More screenshots</summary>
@@ -53,9 +50,35 @@ wtw applies configurable readiness rules — like waiting for a complete season 
 
 ## Quick Start
 
-### Docker Compose (recommended)
-
 Create a `docker-compose.yml`:
+
+```yaml
+services:
+  wtw:
+    image: ghcr.io/1-felix/wtw:latest
+    container_name: wtw
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - wtw-config:/config
+
+volumes:
+  wtw-config:
+```
+
+```bash
+docker compose up -d
+```
+
+Open [http://localhost:3000](http://localhost:3000) — the setup wizard will walk you through connecting Jellyfin, Sonarr, and Radarr. The first sync takes about 30 seconds.
+
+> The Docker image includes a built-in healthcheck on `/api/health` for orchestrators like Portainer or Kubernetes.
+
+<details>
+<summary>Pre-configure with environment variables</summary>
+
+If you prefer to skip the setup wizard, pass your service credentials as environment variables. These take priority over any values configured through the UI.
 
 ```yaml
 services:
@@ -70,132 +93,45 @@ services:
       JELLYFIN_API_KEY: "your-jellyfin-api-key"
       JELLYFIN_USER_ID: "your-jellyfin-user-id"
 
-      # Optional: enable Sonarr integration
+      # Optional: Sonarr integration
       # SONARR_URL: "http://sonarr:8989"
       # SONARR_API_KEY: "your-sonarr-api-key"
 
-      # Optional: enable Radarr integration
+      # Optional: Radarr integration
       # RADARR_URL: "http://radarr:7878"
       # RADARR_API_KEY: "your-radarr-api-key"
+
+      # Optional: sync interval in minutes (default: 15)
+      # SYNC_INTERVAL_MINUTES: 15
     volumes:
-      # Recommended: persist settings, notifications, and dismissed items
       - wtw-config:/config
 
 volumes:
   wtw-config:
 ```
 
-```bash
-docker compose up -d
-```
+Jellyfin is the only required service. Sonarr and Radarr are optional — when configured, they provide richer metadata that powers additional readiness rules (complete season, fully monitored).
 
-Open [http://localhost:3000](http://localhost:3000). The first sync takes ~30 seconds.
+</details>
 
-### Docker Run
+<details>
+<summary>Docker Run</summary>
 
 ```bash
 docker run -d \
   --name wtw \
   -p 3000:3000 \
-  -e JELLYFIN_URL="http://jellyfin:8096" \
-  -e JELLYFIN_API_KEY="your-key" \
-  -e JELLYFIN_USER_ID="your-user-id" \
   -v wtw-config:/config \
   ghcr.io/1-felix/wtw:latest
 ```
 
-## Configuration
-
-### Environment Variables
-
-| Variable | Required | Default | Description |
-|---|---|---|---|
-| `JELLYFIN_URL` | Yes | — | Jellyfin server URL |
-| `JELLYFIN_API_KEY` | Yes | — | Jellyfin API key |
-| `JELLYFIN_USER_ID` | Yes | — | Jellyfin user ID (see [Finding your User ID](#finding-your-jellyfin-user-id)) |
-| `SONARR_URL` | No | — | Sonarr server URL |
-| `SONARR_API_KEY` | No | — | Sonarr API key |
-| `RADARR_URL` | No | — | Radarr server URL |
-| `RADARR_API_KEY` | No | — | Radarr API key |
-| `SYNC_INTERVAL_MINUTES` | No | `15` | How often to re-sync data from services |
-
-Jellyfin is the only required integration. Sonarr and Radarr are optional — when configured, they provide richer metadata (monitored status, language profiles) that powers additional readiness rules.
-
-### Finding your Jellyfin User ID
-
-wtw needs your Jellyfin user ID to read watch status (played, in-progress, etc.). To find it, run:
-
-```bash
-curl "http://<jellyfin-url>/Users?api_key=<your-api-key>"
-```
-
-This returns a list of users. Find your username and copy the `Id` field — it looks like `5e3236d98db649668657e2248e975db5`.
-
-### Settings UI
-
-All rule configuration can be managed from the **Settings** page in the dashboard:
-
-- **Rules** — toggle complete season, language availability, fully monitored
-- **Language** — set target audio language, composition mode (AND/OR), almost-ready threshold
-- **Overrides** — per-series rule overrides (disable rules, change language target)
-- **Notifications** — add Discord or generic webhooks, configure filters (ready / almost-ready)
-- **Dismissed Items** — view and un-dismiss hidden items
-- **About** — service connection status, sync interval, database info
-
-### rules.json (legacy)
-
-You can also configure rules via a JSON file mounted at `/config/rules.json`. On first startup, wtw automatically imports the file into its database. After that, changes are managed through the Settings UI.
-
-<details>
-<summary>rules.json reference</summary>
-
-```json
-{
-  "rules": {
-    "completeSeason": true,
-    "languageAvailable": true,
-    "fullyMonitored": true
-  },
-  "languageTarget": "English",
-  "almostReadyThreshold": 0.8,
-  "compositionMode": "and",
-  "overrides": {
-    "One Piece": {
-      "disabledRules": ["complete-season"],
-      "languageTarget": "Japanese"
-    }
-  }
-}
-```
-
-| Key | Type | Default | Description |
-|---|---|---|---|
-| `rules.completeSeason` | `boolean` | `true` | Require all aired episodes to have files |
-| `rules.languageAvailable` | `boolean` | `true` | Require target audio language on all episodes |
-| `rules.fullyMonitored` | `boolean` | `true` | Require all episodes to be monitored in Sonarr |
-| `languageTarget` | `string` | `"English"` | Target audio language (name or ISO code) |
-| `almostReadyThreshold` | `number` | `0.8` | Progress threshold (0–1) for "almost ready" |
-| `compositionMode` | `"and" \| "or"` | `"and"` | Whether all rules must pass or just one |
-| `overrides` | `object` | `{}` | Per-series rule overrides (keyed by title or TVDB ID) |
-
 </details>
 
-## API
+## Configuration
 
-| Endpoint | Method | Description |
-|---|---|---|
-| `/api/health` | GET | Service status, sync state, version info |
-| `/api/media` | GET | All media with readiness verdicts |
-| `/api/media/continue` | GET | In-progress items with playback position |
-| `/api/media/[id]/languages` | GET | Per-episode language breakdown for a series |
-| `/api/media/[id]/dismiss` | POST/DELETE | Dismiss or un-dismiss a media item |
-| `/api/settings` | GET/PUT | Read or update rule configuration |
-| `/api/webhooks` | GET/POST | List or create notification webhooks |
-| `/api/webhooks/[id]` | PUT/DELETE | Update or delete a webhook |
-| `/api/webhooks/[id]/test` | POST | Send a test notification |
-| `/api/dismissed` | GET | List all dismissed items |
-| `/api/sync` | POST | Trigger a manual sync |
-| `/api/images/[itemId]` | GET | Proxy poster images from Jellyfin |
+All configuration is managed from the **Settings** page in the dashboard — rules, language targets, per-series overrides, notification webhooks, and service connections.
+
+Settings, dismissed items, and notification history are persisted in a SQLite database at `/config/wtw.db` and survive container restarts.
 
 ## Development
 
@@ -228,46 +164,12 @@ pnpm test          # single run
 pnpm test:watch    # watch mode
 ```
 
-### Type Checking
-
-```bash
-pnpm exec tsc --noEmit
-```
-
 ### Docker Build
 
 ```bash
 docker build -t wtw .
-docker run -p 3000:3000 -e JELLYFIN_URL="..." -e JELLYFIN_API_KEY="..." wtw
+docker run -p 3000:3000 -v wtw-config:/config wtw
 ```
-
-## Architecture
-
-```
-┌──────────────────────────────────────────────────────┐
-│                     Dashboard UI                      │
-│  Ready │ Almost Ready │ Continue │ Languages │ Settings│
-├──────────────────────────────────────────────────────┤
-│                  Readiness Engine                      │
-│  complete-season │ language-available │ fully-monitored │
-├──────────────────────────────────────────────────────┤
-│          In-Memory Cache + Sync Orchestrator           │
-├────────────┬──────────────┬───────────────────────────┤
-│  Jellyfin  │    Sonarr     │          Radarr           │
-│  Client    │    Client     │          Client           │
-├────────────┴──────────────┴───────────────────────────┤
-│     SQLite (settings, webhooks, dismissed, notif log)  │
-└───────────────────────────────────────────────────────┘
-```
-
-## Tech Stack
-
-- [Next.js](https://nextjs.org/) 16 (App Router) with TypeScript
-- [Tailwind CSS](https://tailwindcss.com/) v4 + [shadcn/ui](https://ui.shadcn.com/)
-- [better-sqlite3](https://github.com/WiseLibs/better-sqlite3) for embedded persistence
-- [Zod](https://zod.dev/) v4 for runtime validation
-- [Vitest](https://vitest.dev/) for testing
-- Docker (multi-stage build, Node.js 22 Alpine)
 
 ## License
 
