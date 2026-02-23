@@ -7,6 +7,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { PageTitle } from "@/components/page-title";
 import { useSettings } from "./hooks/use-settings";
 import type { SettingsSection } from "./schemas";
 import { RulesSection } from "./sections/rules-section";
@@ -67,10 +68,9 @@ function SettingsContent() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center gap-2">
-        <SettingsIcon className="h-5 w-5 text-primary" />
-        <h2 className="text-xl font-semibold tracking-tight">Settings</h2>
-      </div>
+      <PageTitle icon={<SettingsIcon className="h-5 w-5 text-primary" />}>
+        Settings
+      </PageTitle>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList variant="line" className="mb-6 flex-wrap overflow-hidden">

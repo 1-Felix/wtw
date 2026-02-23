@@ -6,6 +6,7 @@ import { PosterImage } from "@/components/poster-image";
 import { ProgressBar } from "@/components/progress-bar";
 import { useSyncReady } from "@/hooks/use-sync-ready";
 import { SyncGuardSpinner } from "@/components/sync-guard";
+import { PageTitle } from "@/components/page-title";
 
 interface ContinueItem {
   type: "episode" | "movie";
@@ -51,9 +52,7 @@ export default function ContinueWatchingPage() {
 
   return (
     <div>
-      <h2 className="mb-6 text-xl font-semibold tracking-tight">
-        Continue Watching
-      </h2>
+      <PageTitle>Continue Watching</PageTitle>
 
       {items.length === 0 ? (
         <div className="rounded-md border border-border bg-card p-8 text-center">

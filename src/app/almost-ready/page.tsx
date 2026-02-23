@@ -9,6 +9,7 @@ import { getRulesConfig, getSeriesOverride } from "@/lib/config/rules";
 import { isSeasonWatched } from "@/lib/models/media";
 import { groupSeasonsBySeries } from "@/lib/series-grouping";
 import { normalizeLanguage } from "@/lib/rules/language-available";
+import { PageTitle } from "@/components/page-title";
 
 export const dynamic = "force-dynamic";
 
@@ -94,9 +95,7 @@ export default function AlmostReadyPage() {
   return (
     <SyncGuard>
       <div>
-        <h2 className="mb-6 text-xl font-semibold tracking-tight tv:text-2xl">
-          Almost Ready
-        </h2>
+        <PageTitle>Almost Ready</PageTitle>
 
         <Suspense>
           <MediaGridView

@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { PageTitle } from "@/components/page-title";
 
 // --- Types ---
 
@@ -235,9 +236,7 @@ export default function LanguagesPage() {
 
   return (
     <div>
-      <h2 className="mb-6 text-xl font-semibold tracking-tight">
-        Language Overview
-      </h2>
+      <PageTitle>Language Overview</PageTitle>
 
       {/* Filters */}
       <div className="mb-4 space-y-3">
