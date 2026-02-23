@@ -1,9 +1,35 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ChevronRight, ChevronDown, Search, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useSyncReady } from "@/hooks/use-sync-ready";
 import { SyncGuardSpinner } from "@/components/sync-guard";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+// --- Types ---
+
+interface SeriesInfo {
+  id: string;
+  title: string;
+  seasonCount: number;
+  audioLanguages: string[];
+  subtitleLanguages: string[];
+  /** Audio languages where at least one episode with a file is missing that language */
+  incompleteLanguages: string[];
+}
+
+interface LanguageCatalog {
+  audio: string[];
+  subtitle: string[];
+}
 
 interface LanguageData {
   seriesId: string;
@@ -22,36 +48,105 @@ interface LanguageData {
   }>;
 }
 
+// Sentinel value for "Any" filter option
+const ANY = "__any__";
+
 export default function LanguagesPage() {
   const syncReady = useSyncReady();
-  const [seriesList, setSeriesList] = useState<
-    Array<{ id: string; title: string }>
-  >([]);
-  const [selectedSeriesId, setSelectedSeriesId] = useState<string | null>(null);
-  const [languageData, setLanguageData] = useState<LanguageData | null>(null);
-  const [loading, setLoading] = useState(false);
 
-  // Fetch series list once sync is ready
+  const [seriesList, setSeriesList] = useState<SeriesInfo[]>([]);
+  const [catalog, setCatalog] = useState<LanguageCatalog>({
+    audio: [],
+    subtitle: [],
+  });
+  const [targetLanguage, setTargetLanguage] = useState<string>("");
+
+  // Filters
+  const [search, setSearch] = useState("");
+  const [audioFilter, setAudioFilter] = useState(ANY);
+  const [subtitleFilter, setSubtitleFilter] = useState(ANY);
+  const [onlyIncomplete, setOnlyIncomplete] = useState(false);
+
+  // Expansion + language data cache
+  const [expandedSeriesId, setExpandedSeriesId] = useState<string | null>(null);
+  const [languageData, setLanguageData] = useState<LanguageData | null>(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+  const languageCache = useRef(new Map<string, LanguageData>());
+
+  // Fetch series list + language catalog + settings on mount
   useEffect(() => {
     if (!syncReady) return;
 
     const load = async () => {
       try {
-        const res = await fetch("/api/media");
-        const data = await res.json();
-        const allSeries = new Map<string, string>();
-        for (const season of [
-          ...data.ready.seasons,
-          ...data.almostReady.seasons,
-        ]) {
-          allSeries.set(season.seriesId, season.seriesTitle);
+        const [mediaRes, catalogRes, settingsRes] = await Promise.all([
+          fetch("/api/media"),
+          fetch("/api/languages"),
+          fetch("/api/settings"),
+        ]);
+        const [mediaData, catalogData, settingsData] = await Promise.all([
+          mediaRes.json(),
+          catalogRes.json(),
+          settingsRes.json(),
+        ]);
+
+        // Build unique series from all seasons
+        const seriesMap = new Map<
+          string,
+          {
+            title: string;
+            seasons: Set<number>;
+            audio: Set<string>;
+            subtitle: Set<string>;
+            incomplete: Set<string>;
+          }
+        >();
+
+        const allSeasons = [
+          ...mediaData.ready.seasons,
+          ...mediaData.almostReady.seasons,
+        ];
+
+        for (const season of allSeasons) {
+          const existing = seriesMap.get(season.seriesId);
+          if (existing) {
+            existing.seasons.add(season.seasonNumber);
+            for (const lang of season.seriesAudioLanguages ?? []) {
+              existing.audio.add(lang);
+            }
+            for (const lang of season.seriesSubtitleLanguages ?? []) {
+              existing.subtitle.add(lang);
+            }
+            for (const lang of season.seriesIncompleteLanguages ?? []) {
+              existing.incomplete.add(lang);
+            }
+          } else {
+            seriesMap.set(season.seriesId, {
+              title: season.seriesTitle,
+              seasons: new Set([season.seasonNumber]),
+              audio: new Set(season.seriesAudioLanguages ?? []),
+              subtitle: new Set(season.seriesSubtitleLanguages ?? []),
+              incomplete: new Set(season.seriesIncompleteLanguages ?? []),
+            });
+          }
         }
-        setSeriesList(
-          Array.from(allSeries.entries()).map(([id, title]) => ({
+
+        const list: SeriesInfo[] = Array.from(seriesMap.entries())
+          .map(([id, info]) => ({
             id,
-            title,
+            title: info.title,
+            seasonCount: info.seasons.size,
+            audioLanguages: [...info.audio].sort(),
+            subtitleLanguages: [...info.subtitle].sort(),
+            incompleteLanguages: [...info.incomplete].sort(),
           }))
-        );
+          .sort((a, b) => a.title.localeCompare(b.title));
+
+        setSeriesList(list);
+        setCatalog(catalogData);
+        if (settingsData.languageTarget) {
+          setTargetLanguage(settingsData.languageTarget);
+        }
       } catch {
         toast.error("Couldn't load series list");
       }
@@ -59,21 +154,77 @@ export default function LanguagesPage() {
     load();
   }, [syncReady]);
 
-  // Fetch language data when series is selected
-  useEffect(() => {
-    if (!selectedSeriesId) return;
-    setLoading(true);
-    fetch(`/api/media/${selectedSeriesId}/languages`)
-      .then((res) => res.json())
-      .then((data: LanguageData) => {
-        setLanguageData(data);
-        setLoading(false);
-      })
-      .catch(() => {
-        toast.error("Couldn't load language data");
-        setLoading(false);
-      });
-  }, [selectedSeriesId]);
+  // Fetch language detail when a series is expanded (with cache)
+  const handleToggle = useCallback(
+    (seriesId: string) => {
+      if (expandedSeriesId === seriesId) {
+        // Collapse
+        setExpandedSeriesId(null);
+        setLanguageData(null);
+        return;
+      }
+
+      setExpandedSeriesId(seriesId);
+
+      // Check cache first
+      const cached = languageCache.current.get(seriesId);
+      if (cached) {
+        setLanguageData(cached);
+        setLoadingDetail(false);
+        return;
+      }
+
+      setLanguageData(null);
+      setLoadingDetail(true);
+      fetch(`/api/media/${seriesId}/languages`)
+        .then((res) => res.json())
+        .then((data: LanguageData) => {
+          languageCache.current.set(seriesId, data);
+          setLanguageData(data);
+          setLoadingDetail(false);
+        })
+        .catch(() => {
+          toast.error("Couldn't load language data");
+          setLoadingDetail(false);
+        });
+    },
+    [expandedSeriesId],
+  );
+
+  // Filter series list
+  const filteredSeries = useMemo(() => {
+    const searchLower = search.toLowerCase();
+    const incompleteTarget =
+      audioFilter !== ANY ? audioFilter : targetLanguage || null;
+
+    return seriesList.filter((s) => {
+      // Text search
+      if (searchLower && !s.title.toLowerCase().includes(searchLower)) {
+        return false;
+      }
+      // Audio language filter
+      if (audioFilter !== ANY && !s.audioLanguages.includes(audioFilter)) {
+        return false;
+      }
+      // Subtitle language filter
+      if (
+        subtitleFilter !== ANY &&
+        !s.subtitleLanguages.includes(subtitleFilter)
+      ) {
+        return false;
+      }
+      // Incomplete filter: show only series where at least one episode with a
+      // file is missing the target audio language. The server computes this at
+      // episode granularity and provides `incompleteLanguages` per series.
+      // A series that doesn't have the language at all is also incomplete.
+      if (onlyIncomplete && incompleteTarget) {
+        const isMissing = !s.audioLanguages.includes(incompleteTarget);
+        const isPartial = s.incompleteLanguages.includes(incompleteTarget);
+        if (!isMissing && !isPartial) return false;
+      }
+      return true;
+    });
+  }, [seriesList, search, audioFilter, subtitleFilter, onlyIncomplete, targetLanguage]);
 
   if (!syncReady) {
     return <SyncGuardSpinner />;
@@ -85,170 +236,264 @@ export default function LanguagesPage() {
         Language Overview
       </h2>
 
-      {/* Series selector */}
-      <div className="mb-6">
-        <select
-          value={selectedSeriesId ?? ""}
-          onChange={(e) =>
-            setSelectedSeriesId(e.target.value || null)
-          }
-          className="rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground"
-        >
-          <option value="">Select a series...</option>
-          {seriesList
-            .sort((a, b) => a.title.localeCompare(b.title))
-            .map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.title}
-              </option>
-            ))}
-        </select>
+      {/* Filters */}
+      <div className="mb-4 space-y-3">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search series..."
+            className="pl-9"
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="min-w-[140px]">
+            <Select value={audioFilter} onValueChange={setAudioFilter}>
+              <SelectTrigger className="h-9 text-xs">
+                <SelectValue placeholder="Audio" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ANY}>Audio: Any</SelectItem>
+                {catalog.audio.map((lang) => (
+                  <SelectItem key={lang} value={lang}>
+                    {lang}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="min-w-[140px]">
+            <Select value={subtitleFilter} onValueChange={setSubtitleFilter}>
+              <SelectTrigger className="h-9 text-xs">
+                <SelectValue placeholder="Subtitles" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ANY}>Subtitles: Any</SelectItem>
+                {catalog.subtitle.map((lang) => (
+                  <SelectItem key={lang} value={lang}>
+                    {lang}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <label className="flex items-center gap-2 text-xs text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={onlyIncomplete}
+              onChange={(e) => setOnlyIncomplete(e.target.checked)}
+              className="rounded border-border accent-primary"
+            />
+            Only show incomplete
+          </label>
+        </div>
+
+        <p className="text-xs text-muted-foreground">
+          Showing {filteredSeries.length} of {seriesList.length} series
+        </p>
       </div>
 
-      {loading && (
-        <div className="flex items-center justify-center py-12">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-        </div>
-      )}
-
-      {!loading && !languageData && selectedSeriesId && (
+      {/* Series list */}
+      {filteredSeries.length === 0 && (
         <div className="rounded-md border border-border bg-card p-8 text-center">
           <p className="text-muted-foreground">
-            No language data available for this series.
+            {seriesList.length === 0
+              ? "No series available. Sync media first."
+              : "No series match the current filters."}
           </p>
         </div>
       )}
 
-      {!loading && !selectedSeriesId && (
-        <div className="rounded-md border border-border bg-card p-8 text-center">
-          <p className="text-muted-foreground">
-            Select a series to view its language breakdown.
-          </p>
-        </div>
-      )}
+      <div className="space-y-1">
+        {filteredSeries.map((series) => {
+          const isExpanded = expandedSeriesId === series.id;
 
-      {!loading && languageData && (
-        <div className="space-y-8">
-          {languageData.seasons.map((season) => {
-            // Collect all unique subtitle languages across episodes
-            const allSubtitleLangs = new Set<string>();
-            for (const ep of season.episodes) {
-              for (const lang of ep.subtitles) {
-                allSubtitleLangs.add(lang);
-              }
-            }
-            const subtitleLanguages = Array.from(allSubtitleLangs).sort();
-            const hasAnyData =
-              season.languages.length > 0 || subtitleLanguages.length > 0;
-
-            return (
-              <section key={season.seasonNumber}>
-                <h3 className="mb-3 text-sm font-semibold text-foreground">
-                  {season.title}
-                </h3>
-
-                {!hasAnyData ? (
-                  <p className="text-sm text-muted-foreground">
-                    No language information available.
-                  </p>
+          return (
+            <div key={series.id}>
+              {/* Series card */}
+              <button
+                onClick={() => handleToggle(series.id)}
+                className="flex w-full items-center gap-3 rounded-md border border-border bg-surface px-4 py-3 text-left transition-colors hover:bg-surface/80"
+              >
+                {isExpanded ? (
+                  <ChevronDown className="h-4 w-4 shrink-0 text-primary" />
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="border-b border-border">
-                          <th className="px-3 py-2 text-left font-medium text-muted-foreground">
-                            Episode
-                          </th>
-                          {season.languages.length > 0 && (
-                            <th
-                              colSpan={season.languages.length}
-                              className="border-b border-border/30 px-3 py-1 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground"
-                            >
-                              Audio
-                            </th>
-                          )}
-                          {subtitleLanguages.length > 0 && (
-                            <th
-                              colSpan={subtitleLanguages.length}
-                              className="border-b border-border/30 px-3 py-1 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground"
-                            >
-                              Subtitles
-                            </th>
-                          )}
-                        </tr>
-                        <tr className="border-b border-border">
-                          <th className="px-3 py-2 text-left font-medium text-muted-foreground" />
+                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium text-foreground">
+                    {series.title}
+                  </div>
+                  <div className="truncate text-xs text-muted-foreground">
+                    {series.seasonCount}{" "}
+                    {series.seasonCount === 1 ? "season" : "seasons"}
+                    {series.audioLanguages.length > 0 && (
+                      <>
+                        {" "}
+                        &middot; Audio: {series.audioLanguages.join(", ")}
+                      </>
+                    )}
+                    {series.subtitleLanguages.length > 0 && (
+                      <>
+                        {" "}
+                        &middot; Sub: {series.subtitleLanguages.join(", ")}
+                      </>
+                    )}
+                  </div>
+                </div>
+              </button>
+
+              {/* Expanded detail */}
+              {isExpanded && (
+                <div className="ml-7 mt-1 mb-2 rounded-md border border-border/50 bg-card p-4">
+                  {loadingDetail && (
+                    <div className="flex items-center justify-center py-6">
+                      <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                    </div>
+                  )}
+
+                  {!loadingDetail && !languageData && (
+                    <p className="text-sm text-muted-foreground">
+                      No language data available for this series.
+                    </p>
+                  )}
+
+                  {!loadingDetail && languageData && (
+                    <LanguageGrid data={languageData} />
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// --- Language Grid sub-component ---
+
+function LanguageGrid({ data }: { data: LanguageData }) {
+  return (
+    <div className="space-y-6">
+      {data.seasons.map((season) => {
+        const allSubtitleLangs = new Set<string>();
+        for (const ep of season.episodes) {
+          for (const lang of ep.subtitles) {
+            allSubtitleLangs.add(lang);
+          }
+        }
+        const subtitleLanguages = Array.from(allSubtitleLangs).sort();
+        const hasAnyData =
+          season.languages.length > 0 || subtitleLanguages.length > 0;
+
+        return (
+          <section key={season.seasonNumber}>
+            <h4 className="mb-2 text-xs font-semibold text-foreground">
+              {season.title}
+            </h4>
+
+            {!hasAnyData ? (
+              <p className="text-xs text-muted-foreground">
+                No language information available.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="px-2 py-1.5 text-left font-medium text-muted-foreground">
+                        Episode
+                      </th>
+                      {season.languages.length > 0 && (
+                        <th
+                          colSpan={season.languages.length}
+                          className="border-b border-border/30 px-2 py-1 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground"
+                        >
+                          Audio
+                        </th>
+                      )}
+                      {subtitleLanguages.length > 0 && (
+                        <th
+                          colSpan={subtitleLanguages.length}
+                          className="border-b border-border/30 px-2 py-1 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground"
+                        >
+                          Subtitles
+                        </th>
+                      )}
+                    </tr>
+                    <tr className="border-b border-border">
+                      <th className="px-2 py-1.5 text-left font-medium text-muted-foreground" />
+                      {season.languages.map((lang) => (
+                        <th
+                          key={`audio-${lang}`}
+                          className="px-2 py-1.5 text-center font-medium text-muted-foreground"
+                        >
+                          {lang}
+                        </th>
+                      ))}
+                      {subtitleLanguages.map((lang) => (
+                        <th
+                          key={`sub-${lang}`}
+                          className="px-2 py-1.5 text-center font-medium text-muted-foreground/70"
+                        >
+                          {lang}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {season.episodes.map((ep) => {
+                      const epSubtitleSet = new Set(ep.subtitles);
+                      return (
+                        <tr
+                          key={ep.episodeNumber}
+                          className="border-b border-border/50"
+                        >
+                          <td className="px-2 py-1.5 text-foreground">
+                            <span className="font-mono text-muted-foreground">
+                              {String(ep.episodeNumber).padStart(2, "0")}
+                            </span>{" "}
+                            {ep.title}
+                          </td>
                           {season.languages.map((lang) => (
-                            <th
+                            <td
                               key={`audio-${lang}`}
-                              className="px-3 py-2 text-center font-medium text-muted-foreground"
+                              className="px-2 py-1.5 text-center"
                             >
-                              {lang}
-                            </th>
+                              {ep.languages[lang] ? (
+                                <span className="inline-block h-3 w-3 rounded-sm bg-primary" />
+                              ) : (
+                                <span className="inline-block h-3 w-3 rounded-sm bg-muted" />
+                              )}
+                            </td>
                           ))}
                           {subtitleLanguages.map((lang) => (
-                            <th
+                            <td
                               key={`sub-${lang}`}
-                              className="px-3 py-2 text-center font-medium text-muted-foreground/70"
+                              className="px-2 py-1.5 text-center"
                             >
-                              {lang}
-                            </th>
+                              {epSubtitleSet.has(lang) ? (
+                                <span className="inline-block h-3 w-3 rounded-sm bg-primary/60" />
+                              ) : (
+                                <span className="inline-block h-3 w-3 rounded-sm bg-muted" />
+                              )}
+                            </td>
                           ))}
                         </tr>
-                      </thead>
-                      <tbody>
-                        {season.episodes.map((ep) => {
-                          const epSubtitleSet = new Set(ep.subtitles);
-                          return (
-                            <tr
-                              key={ep.episodeNumber}
-                              className="border-b border-border/50"
-                            >
-                              <td className="px-3 py-2 text-foreground">
-                                <span className="font-mono text-muted-foreground">
-                                  {String(ep.episodeNumber).padStart(
-                                    2,
-                                    "0"
-                                  )}
-                                </span>{" "}
-                                {ep.title}
-                              </td>
-                              {season.languages.map((lang) => (
-                                <td
-                                  key={`audio-${lang}`}
-                                  className="px-3 py-2 text-center"
-                                >
-                                  {ep.languages[lang] ? (
-                                    <span className="inline-block h-3 w-3 rounded-sm bg-primary" />
-                                  ) : (
-                                    <span className="inline-block h-3 w-3 rounded-sm bg-muted" />
-                                  )}
-                                </td>
-                              ))}
-                              {subtitleLanguages.map((lang) => (
-                                <td
-                                  key={`sub-${lang}`}
-                                  className="px-3 py-2 text-center"
-                                >
-                                  {epSubtitleSet.has(lang) ? (
-                                    <span className="inline-block h-3 w-3 rounded-sm bg-primary/60" />
-                                  ) : (
-                                    <span className="inline-block h-3 w-3 rounded-sm bg-muted" />
-                                  )}
-                                </td>
-                              ))}
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </section>
-            );
-          })}
-        </div>
-      )}
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        );
+      })}
     </div>
   );
 }

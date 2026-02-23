@@ -57,7 +57,7 @@ export function BottomTabBar({ counts }: BottomTabBarProps) {
               </div>
               <span className="truncate">{tab.label}</span>
               {isActive && (
-                <span className="absolute top-0 left-1/4 right-1/4 h-0.5 rounded-full bg-primary" />
+                <span className="absolute bottom-0 left-1/4 right-1/4 h-0.5 rounded-full bg-primary" />
               )}
             </Link>
           );

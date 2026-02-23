@@ -77,19 +77,50 @@ interface DetailPanelProps {
 export function DetailPanel({ item, onClose, onDismiss }: DetailPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
   const touchDeltaX = useRef(0);
+  const touchStartTime = useRef(0);
+  const directionLocked = useRef<"horizontal" | "vertical" | null>(null);
+
+  // Swipe-to-dismiss thresholds
+  const SWIPE_DISTANCE_THRESHOLD = 150;
+  const SWIPE_VELOCITY_MIN_DISTANCE = 80;
+  const SWIPE_VELOCITY_THRESHOLD = 0.5; // px/ms
+  const DIRECTION_LOCK_THRESHOLD = 10; // px of movement before locking
 
   // Swipe-to-dismiss on mobile
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    // Remove any snap-back transition so the drag feels immediate
+    if (panelRef.current) {
+      panelRef.current.style.transition = "";
+    }
     touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
     touchDeltaX.current = 0;
+    touchStartTime.current = Date.now();
+    directionLocked.current = null;
   }, []);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (touchStartX.current === null) return;
-    const delta = e.touches[0].clientX - touchStartX.current;
+    if (touchStartX.current === null || touchStartY.current === null) return;
+
+    const deltaX = e.touches[0].clientX - touchStartX.current;
+    const deltaY = e.touches[0].clientY - touchStartY.current;
+
+    // Determine direction lock if not yet locked
+    if (directionLocked.current === null) {
+      const absDeltaX = Math.abs(deltaX);
+      const absDeltaY = Math.abs(deltaY);
+      if (absDeltaX > DIRECTION_LOCK_THRESHOLD || absDeltaY > DIRECTION_LOCK_THRESHOLD) {
+        directionLocked.current = absDeltaX > absDeltaY ? "horizontal" : "vertical";
+      }
+    }
+
+    // Only track horizontal movement if direction-locked to horizontal
+    if (directionLocked.current !== "horizontal") return;
+
     // Only allow swiping right (positive delta)
-    touchDeltaX.current = Math.max(0, delta);
+    touchDeltaX.current = Math.max(0, deltaX);
     if (panelRef.current && touchDeltaX.current > 0) {
       panelRef.current.style.transform = `translateX(${touchDeltaX.current}px)`;
     }
@@ -97,16 +128,28 @@ export function DetailPanel({ item, onClose, onDismiss }: DetailPanelProps) {
 
   const handleTouchEnd = useCallback(() => {
     if (panelRef.current) {
-      if (touchDeltaX.current > 100) {
+      const elapsed = Date.now() - touchStartTime.current;
+      const velocity = elapsed > 0 ? touchDeltaX.current / elapsed : 0;
+
+      const distanceMet = touchDeltaX.current > SWIPE_DISTANCE_THRESHOLD;
+      const velocityMet =
+        touchDeltaX.current > SWIPE_VELOCITY_MIN_DISTANCE &&
+        velocity > SWIPE_VELOCITY_THRESHOLD;
+
+      if (distanceMet || velocityMet) {
         // Swipe threshold met — close
         onClose();
       } else {
-        // Snap back
+        // Snap back with smooth transition
+        panelRef.current.style.transition = "transform 200ms ease-out";
         panelRef.current.style.transform = "";
       }
     }
     touchStartX.current = null;
+    touchStartY.current = null;
     touchDeltaX.current = 0;
+    touchStartTime.current = 0;
+    directionLocked.current = null;
   }, [onClose]);
 
   const handleDismiss = useCallback(() => {

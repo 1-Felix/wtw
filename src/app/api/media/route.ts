@@ -17,6 +17,10 @@ interface SeasonWithVerdict {
   dateAdded: string;
   verdict: ReadinessVerdict;
   dismissed: boolean;
+  seriesAudioLanguages: string[];
+  seriesSubtitleLanguages: string[];
+  /** Audio languages where at least one episode with a file is missing that language */
+  seriesIncompleteLanguages: string[];
 }
 
 interface MovieWithVerdict {
@@ -46,6 +50,37 @@ export async function GET() {
   const almostReadyMovies: MovieWithVerdict[] = [];
 
   for (const series of cache.series) {
+    // Aggregate unique audio/subtitle languages across all episodes in this series
+    const audioLangSet = new Set<string>();
+    const subtitleLangSet = new Set<string>();
+    for (const s of series.seasons) {
+      for (const ep of s.episodes) {
+        for (const stream of ep.audioStreams) {
+          if (stream.language) audioLangSet.add(stream.language);
+        }
+        for (const stream of ep.subtitleStreams) {
+          if (stream.language) subtitleLangSet.add(stream.language);
+        }
+      }
+    }
+    const seriesAudioLanguages = [...audioLangSet].sort();
+    const seriesSubtitleLanguages = [...subtitleLangSet].sort();
+
+    // Determine which audio languages are incomplete (at least one episode
+    // with a file is missing that language)
+    const seriesIncompleteLanguages = seriesAudioLanguages.filter((lang) => {
+      for (const s of series.seasons) {
+        for (const ep of s.episodes) {
+          if (!ep.hasFile) continue;
+          const hasLang = ep.audioStreams.some(
+            (stream) => stream.language === lang,
+          );
+          if (!hasLang) return true;
+        }
+      }
+      return false;
+    });
+
     for (const season of series.seasons) {
       if (config.hideWatched && isSeasonWatched(season)) continue;
       const verdict = evaluateSeason(season, series);
@@ -61,6 +96,9 @@ export async function GET() {
         dateAdded: series.dateAdded,
         verdict,
         dismissed: dismissedIds.has(seasonKey),
+        seriesAudioLanguages,
+        seriesSubtitleLanguages,
+        seriesIncompleteLanguages,
       };
 
       if (verdict.status === "ready") readySeasons.push(item);

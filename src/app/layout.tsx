@@ -51,7 +51,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <div className="flex h-screen overflow-hidden">
+        <div className="flex h-dvh overflow-hidden">
           {/* Sidebar — collapsible on tablet, hidden on mobile */}
           <Sidebar counts={counts} />
 
@@ -78,7 +78,7 @@ export default function RootLayout({
             {/* Config warning banner */}
             <ConfigWarningBanner />
 
-            <div className="flex-1 overflow-y-auto p-4 pb-20 md:p-6 md:pb-6">
+            <div className="flex-1 overflow-x-hidden overflow-y-auto p-4 pb-20 md:p-6 md:pb-6">
               {children}
             </div>
           </main>
