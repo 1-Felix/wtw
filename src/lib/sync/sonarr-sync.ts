@@ -26,6 +26,8 @@ export interface SonarrEpisodeData {
   hasFile: boolean;
   monitored: boolean;
   hasAired: boolean;
+  /** Original air date from Sonarr (ISO 8601 UTC) */
+  airDateUtc: string | null;
 }
 
 export async function syncSonarr(
@@ -69,6 +71,7 @@ export async function syncSonarr(
       hasAired: ep.airDateUtc
         ? new Date(ep.airDateUtc) <= new Date()
         : false,
+      airDateUtc: ep.airDateUtc ?? null,
     }));
 
     // Resolve language profile ID to name

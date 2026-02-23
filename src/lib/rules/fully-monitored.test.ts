@@ -25,6 +25,7 @@ function makeEpisode(
     episodeNumber: num,
     hasFile: true,
     hasAired: true,
+    airDateUtc: null,
     isMonitored,
     isWatched: false,
     playbackProgress: null,

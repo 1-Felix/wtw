@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { Check, ChevronDown, CircleCheck, Play, AlertCircle, ArrowLeft, EyeOff } from "lucide-react";
+import { Check, ChevronDown, CircleCheck, Play, AlertCircle, Clock, ArrowLeft, EyeOff } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -12,7 +12,7 @@ import { PosterImage } from "./poster-image";
 import { ReadinessBadge } from "./readiness-badge";
 import { ProgressBar } from "./progress-bar";
 import type { ReadinessVerdict, RuleResult } from "@/lib/models/readiness";
-import { formatRelativeTime } from "@/lib/utils";
+import { formatRelativeTime, formatAirDate } from "@/lib/utils";
 
 // --- Shared types for items displayed in the panel ---
 
@@ -35,6 +35,8 @@ export interface EpisodeInfo {
   episodeNumber: number;
   title: string;
   hasFile: boolean;
+  hasAired: boolean;
+  airDateUtc: string | null;
   audioLanguages: string[];
   isWatched: boolean;
   playbackProgress: number | null;
@@ -310,10 +312,11 @@ function SeasonDetail({ item }: { item: SeasonDetailItem }) {
               const progressPercent = (!ep.isWatched && ep.playbackProgress != null && ep.playbackProgress > 0)
                 ? Math.round(ep.playbackProgress * 100)
                 : null;
+              const isTba = !ep.hasAired && !ep.hasFile;
               return (
                 <div
                   key={ep.episodeNumber}
-                  className="flex flex-col gap-0 rounded-md border border-border/50 bg-surface"
+                  className={`flex flex-col gap-0 rounded-md border border-border/50 bg-surface${isTba ? " opacity-60" : ""}`}
                 >
                   <div className="flex items-center gap-3 px-3 py-2">
                     <span className="w-6 shrink-0 text-center font-mono text-xs text-muted-foreground">
@@ -323,11 +326,15 @@ function SeasonDetail({ item }: { item: SeasonDetailItem }) {
                     <span className="min-w-0 flex-1 truncate text-xs text-foreground">
                       {ep.title}
                     </span>
-                    {ep.audioLanguages.length > 0 && (
+                    {isTba ? (
+                      <span className="shrink-0 text-[10px] text-muted-foreground">
+                        {ep.airDateUtc ? formatAirDate(ep.airDateUtc) : "TBA"}
+                      </span>
+                    ) : ep.audioLanguages.length > 0 ? (
                       <span className="shrink-0 text-[10px] text-muted-foreground">
                         {ep.audioLanguages.slice(0, 2).join(", ")}
                       </span>
-                    )}
+                    ) : null}
                   </div>
                   {progressPercent != null && (
                     <div className="px-3 pb-1.5">
@@ -474,10 +481,11 @@ function SeriesGroupDetail({ item }: { item: SeriesGroupDetailItem }) {
                             !ep.isWatched &&
                             ep.playbackProgress != null &&
                             ep.playbackProgress > 0;
+                          const isTba = !ep.hasAired && !ep.hasFile;
                           return (
                             <div
                               key={ep.episodeNumber}
-                              className="flex flex-col gap-0 rounded-md border border-border/50 bg-surface"
+                              className={`flex flex-col gap-0 rounded-md border border-border/50 bg-surface${isTba ? " opacity-60" : ""}`}
                             >
                               <div className="flex items-center gap-3 px-3 py-2">
                                 <span className="w-6 shrink-0 text-center font-mono text-xs text-muted-foreground">
@@ -487,11 +495,15 @@ function SeriesGroupDetail({ item }: { item: SeriesGroupDetailItem }) {
                                 <span className="min-w-0 flex-1 truncate text-xs text-foreground">
                                   {ep.title}
                                 </span>
-                                {ep.audioLanguages.length > 0 && (
+                                {isTba ? (
+                                  <span className="shrink-0 text-[10px] text-muted-foreground">
+                                    {ep.airDateUtc ? formatAirDate(ep.airDateUtc) : "TBA"}
+                                  </span>
+                                ) : ep.audioLanguages.length > 0 ? (
                                   <span className="shrink-0 text-[10px] text-muted-foreground">
                                     {ep.audioLanguages.slice(0, 2).join(", ")}
                                   </span>
-                                )}
+                                ) : null}
                               </div>
                               {isInProgress && (
                                 <div className="px-3 pb-1.5">
@@ -602,6 +614,9 @@ function EpisodeStatusIcon({ episode }: { episode: EpisodeInfo }) {
   }
   if (episode.hasFile) {
     return <Check className="h-3.5 w-3.5 shrink-0 text-primary" />;
+  }
+  if (!episode.hasAired) {
+    return <Clock className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />;
   }
   return <AlertCircle className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />;
 }

@@ -37,6 +37,7 @@ function makeEpisode(
     episodeNumber: num,
     hasFile,
     hasAired: true,
+    airDateUtc: null,
     isMonitored: null,
     isWatched: false,
     playbackProgress: null,

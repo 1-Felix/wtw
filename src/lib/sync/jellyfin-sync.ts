@@ -45,6 +45,7 @@ export async function syncJellyfin(
               episodeNumber: ep.IndexNumber ?? 0,
               hasFile: true, // If it's in Jellyfin, the file exists
               hasAired,
+              airDateUtc: ep.PremiereDate ?? null,
               isMonitored: null, // Will be filled by Sonarr merge
               ...watchStatus,
               ...streams,

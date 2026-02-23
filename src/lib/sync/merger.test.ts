@@ -23,12 +23,12 @@ function makeJellyfinSeries(overrides: Partial<Series> = {}): Series {
         episodes: [
           {
             id: "ep1", title: "Episode 1", seasonNumber: 1, episodeNumber: 1,
-            hasFile: true, hasAired: true, isMonitored: null, isWatched: false,
+            hasFile: true, hasAired: true, airDateUtc: null, isMonitored: null, isWatched: false,
             playbackProgress: null, lastPlayed: null, audioStreams: [], subtitleStreams: [],
           },
           {
             id: "ep2", title: "Episode 2", seasonNumber: 1, episodeNumber: 2,
-            hasFile: true, hasAired: true, isMonitored: null, isWatched: false,
+            hasFile: true, hasAired: true, airDateUtc: null, isMonitored: null, isWatched: false,
             playbackProgress: null, lastPlayed: null, audioStreams: [], subtitleStreams: [],
           },
         ],
@@ -49,9 +49,9 @@ function makeSonarrData(overrides: Partial<SonarrSeriesData> = {}): SonarrSeries
     imdbId: null,
     monitored: true,
     episodes: [
-      { seasonNumber: 1, episodeNumber: 1, title: "Episode 1", hasFile: true, monitored: true, hasAired: true },
-      { seasonNumber: 1, episodeNumber: 2, title: "Episode 2", hasFile: true, monitored: true, hasAired: true },
-      { seasonNumber: 1, episodeNumber: 3, title: "Episode 3", hasFile: false, monitored: true, hasAired: false },
+      { seasonNumber: 1, episodeNumber: 1, title: "Episode 1", hasFile: true, monitored: true, hasAired: true, airDateUtc: null },
+      { seasonNumber: 1, episodeNumber: 2, title: "Episode 2", hasFile: true, monitored: true, hasAired: true, airDateUtc: null },
+      { seasonNumber: 1, episodeNumber: 3, title: "Episode 3", hasFile: false, monitored: true, hasAired: false, airDateUtc: null },
     ],
     seasons: [
       { seasonNumber: 1, monitored: true, totalEpisodes: 3, episodesWithFiles: 2 },

@@ -38,6 +38,7 @@ const makeSeason = (num: number) => ({
       episodeNumber: 1,
       hasFile: true,
       hasAired: true,
+      airDateUtc: null,
       isMonitored: null,
       isWatched: false,
       playbackProgress: num === 1 ? 0.5 : null, // Season 1 ep 1 has progress

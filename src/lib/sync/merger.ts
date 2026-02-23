@@ -48,6 +48,7 @@ export function mergeSeries(
           ...episode,
           hasFile: sonarrEp.hasFile || episode.hasFile,
           hasAired: sonarrEp.hasAired || episode.hasAired,
+          airDateUtc: sonarrEp.airDateUtc ?? episode.airDateUtc,
           isMonitored: sonarrEp.monitored,
         };
       });
@@ -65,6 +66,7 @@ export function mergeSeries(
             episodeNumber: sonarrEp.episodeNumber,
             hasFile: sonarrEp.hasFile,
             hasAired: sonarrEp.hasAired,
+            airDateUtc: sonarrEp.airDateUtc,
             isMonitored: sonarrEp.monitored,
             isWatched: false,
             playbackProgress: null,

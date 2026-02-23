@@ -32,6 +32,8 @@ export const episodeSchema = z.object({
   hasFile: z.boolean(),
   /** Whether the episode has aired */
   hasAired: z.boolean(),
+  /** Air date from Sonarr/Jellyfin (ISO 8601 UTC), null if unknown */
+  airDateUtc: z.string().nullable(),
   /** Whether the episode is monitored in Sonarr */
   isMonitored: z.boolean().nullable(),
 

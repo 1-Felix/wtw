@@ -46,6 +46,8 @@ export default function ReadyToWatchPage() {
           episodeNumber: ep.episodeNumber,
           title: ep.title,
           hasFile: ep.hasFile,
+          hasAired: ep.hasAired,
+          airDateUtc: ep.airDateUtc,
           audioLanguages: ep.audioStreams.map((s) => s.language),
           isWatched: ep.isWatched,
           playbackProgress: ep.playbackProgress,

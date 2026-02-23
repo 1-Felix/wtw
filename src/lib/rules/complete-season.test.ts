@@ -19,6 +19,7 @@ function makeSeason(overrides: Partial<Season> = {}): Season {
         episodeNumber: 1,
         hasFile: true,
         hasAired: true,
+        airDateUtc: null,
         isMonitored: null,
         isWatched: false,
         playbackProgress: null,
@@ -33,6 +34,7 @@ function makeSeason(overrides: Partial<Season> = {}): Season {
         episodeNumber: 2,
         hasFile: true,
         hasAired: true,
+        airDateUtc: null,
         isMonitored: null,
         isWatched: false,
         playbackProgress: null,
@@ -47,6 +49,7 @@ function makeSeason(overrides: Partial<Season> = {}): Season {
         episodeNumber: 3,
         hasFile: true,
         hasAired: true,
+        airDateUtc: null,
         isMonitored: null,
         isWatched: false,
         playbackProgress: null,
@@ -85,12 +88,12 @@ describe("completeSeasonRule", () => {
       episodes: [
         {
           id: "ep1", title: "Episode 1", seasonNumber: 1, episodeNumber: 1,
-          hasFile: true, hasAired: true, isMonitored: null, isWatched: false,
+          hasFile: true, hasAired: true, airDateUtc: null, isMonitored: null, isWatched: false,
           playbackProgress: null, lastPlayed: null, audioStreams: [], subtitleStreams: [],
         },
         {
           id: "ep2", title: "Episode 2", seasonNumber: 1, episodeNumber: 2,
-          hasFile: false, hasAired: false, isMonitored: null, isWatched: false,
+          hasFile: false, hasAired: false, airDateUtc: null, isMonitored: null, isWatched: false,
           playbackProgress: null, lastPlayed: null, audioStreams: [], subtitleStreams: [],
         },
       ],
@@ -105,17 +108,17 @@ describe("completeSeasonRule", () => {
       episodes: [
         {
           id: "ep1", title: "Episode 1", seasonNumber: 1, episodeNumber: 1,
-          hasFile: true, hasAired: true, isMonitored: null, isWatched: false,
+          hasFile: true, hasAired: true, airDateUtc: null, isMonitored: null, isWatched: false,
           playbackProgress: null, lastPlayed: null, audioStreams: [], subtitleStreams: [],
         },
         {
           id: "ep2", title: "Episode 2", seasonNumber: 1, episodeNumber: 2,
-          hasFile: false, hasAired: true, isMonitored: null, isWatched: false,
+          hasFile: false, hasAired: true, airDateUtc: null, isMonitored: null, isWatched: false,
           playbackProgress: null, lastPlayed: null, audioStreams: [], subtitleStreams: [],
         },
         {
           id: "ep3", title: "Episode 3", seasonNumber: 1, episodeNumber: 3,
-          hasFile: true, hasAired: true, isMonitored: null, isWatched: false,
+          hasFile: true, hasAired: true, airDateUtc: null, isMonitored: null, isWatched: false,
           playbackProgress: null, lastPlayed: null, audioStreams: [], subtitleStreams: [],
         },
       ],
@@ -133,22 +136,22 @@ describe("completeSeasonRule", () => {
       episodes: [
         {
           id: "ep1", title: "Episode 1", seasonNumber: 1, episodeNumber: 1,
-          hasFile: true, hasAired: true, isMonitored: null, isWatched: false,
+          hasFile: true, hasAired: true, airDateUtc: null, isMonitored: null, isWatched: false,
           playbackProgress: null, lastPlayed: null, audioStreams: [], subtitleStreams: [],
         },
         {
           id: "ep2", title: "Episode 2", seasonNumber: 1, episodeNumber: 2,
-          hasFile: true, hasAired: true, isMonitored: null, isWatched: false,
+          hasFile: true, hasAired: true, airDateUtc: null, isMonitored: null, isWatched: false,
           playbackProgress: null, lastPlayed: null, audioStreams: [], subtitleStreams: [],
         },
         {
           id: "ep3", title: "Episode 3", seasonNumber: 1, episodeNumber: 3,
-          hasFile: true, hasAired: true, isMonitored: null, isWatched: false,
+          hasFile: true, hasAired: true, airDateUtc: null, isMonitored: null, isWatched: false,
           playbackProgress: null, lastPlayed: null, audioStreams: [], subtitleStreams: [],
         },
         {
           id: "ep4", title: "Episode 4", seasonNumber: 1, episodeNumber: 4,
-          hasFile: false, hasAired: true, isMonitored: null, isWatched: false,
+          hasFile: false, hasAired: true, airDateUtc: null, isMonitored: null, isWatched: false,
           playbackProgress: null, lastPlayed: null, audioStreams: [], subtitleStreams: [],
         },
       ],
