@@ -90,3 +90,35 @@ export function getLastSonarrData(): SonarrSeriesData[] {
 export function getLastRadarrData(): RadarrMovieData[] {
   return getGlobalCache().lastRadarrData;
 }
+
+/**
+ * Update the watched status of a single item (episode or movie) in the cache.
+ * Returns true if the item was found and updated, false otherwise.
+ */
+export function markItemWatched(itemId: string, watched: boolean): boolean {
+  const cache = getGlobalCache();
+
+  // Search episodes
+  for (const series of cache.series) {
+    for (const season of series.seasons) {
+      for (const episode of season.episodes) {
+        if (episode.id === itemId) {
+          episode.isWatched = watched;
+          episode.playbackProgress = watched ? null : episode.playbackProgress;
+          return true;
+        }
+      }
+    }
+  }
+
+  // Search movies
+  for (const movie of cache.movies) {
+    if (movie.id === itemId) {
+      movie.isWatched = watched;
+      movie.playbackProgress = watched ? null : movie.playbackProgress;
+      return true;
+    }
+  }
+
+  return false;
+}

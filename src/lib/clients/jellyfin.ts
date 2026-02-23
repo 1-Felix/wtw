@@ -229,6 +229,46 @@ export class JellyfinClient {
   getRawImageUrl(itemId: string): string {
     return `${this.baseUrl}/Items/${itemId}/Images/Primary?api_key=${this.apiKey}&maxWidth=400`;
   }
+
+  /** Mark an item as watched (played) in Jellyfin */
+  async markAsWatched(itemId: string): Promise<void> {
+    const url = new URL(
+      `/Users/${this.userId}/PlayedItems/${itemId}`,
+      this.baseUrl
+    );
+    url.searchParams.set("api_key", this.apiKey);
+
+    const response = await fetch(url.toString(), {
+      method: "POST",
+      signal: AbortSignal.timeout(this.timeout),
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `Jellyfin API error: ${response.status} ${response.statusText} for POST /Users/{userId}/PlayedItems/${itemId}`
+      );
+    }
+  }
+
+  /** Mark an item as unwatched (unplayed) in Jellyfin */
+  async markAsUnwatched(itemId: string): Promise<void> {
+    const url = new URL(
+      `/Users/${this.userId}/PlayedItems/${itemId}`,
+      this.baseUrl
+    );
+    url.searchParams.set("api_key", this.apiKey);
+
+    const response = await fetch(url.toString(), {
+      method: "DELETE",
+      signal: AbortSignal.timeout(this.timeout),
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `Jellyfin API error: ${response.status} ${response.statusText} for DELETE /Users/{userId}/PlayedItems/${itemId}`
+      );
+    }
+  }
 }
 
 // --- Helper to extract normalized data from Jellyfin items ---
