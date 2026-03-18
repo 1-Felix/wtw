@@ -6,6 +6,8 @@ import { Sidebar } from "@/components/sidebar";
 import { BottomTabBar } from "@/components/bottom-tab-bar";
 import { ConfigWarningBanner } from "@/components/config-warning-banner";
 import { Toaster } from "@/components/ui/sonner";
+import { ConsoleGreeting } from "@/components/console-greeting";
+import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 import { getNavCounts } from "@/lib/counts";
 import "./globals.css";
 
@@ -88,6 +90,8 @@ export default function RootLayout({
         <BottomTabBar counts={counts} />
 
         <Toaster />
+        <ConsoleGreeting />
+        <KeyboardShortcuts />
       </body>
     </html>
   );

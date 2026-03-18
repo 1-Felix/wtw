@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Tv2, Clock, Globe, Play, Settings } from "lucide-react";
+import { motion, LayoutGroup } from "@/components/ui/motion";
 import type { NavCounts } from "@/lib/counts";
 
 interface Tab {
@@ -32,40 +33,46 @@ export function BottomTabBar({ counts }: BottomTabBarProps) {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-sidebar pb-[env(safe-area-inset-bottom)] md:hidden">
-      <div className="flex items-center justify-around">
-        {tabs.map((tab) => {
-          const isActive = pathname === tab.href;
-          const Icon = tab.icon;
-          const count = tab.countKey ? counts[tab.countKey] : 0;
+      <LayoutGroup>
+        <div className="flex items-center justify-around">
+          {tabs.map((tab) => {
+            const isActive = pathname === tab.href;
+            const Icon = tab.icon;
+            const count = tab.countKey ? counts[tab.countKey] : 0;
 
-          return (
-            <Link
-              key={tab.href}
-              href={tab.href}
-              aria-current={isActive ? "page" : undefined}
-              aria-label={count > 0 ? `${tab.label}, ${count} items` : undefined}
-              className={`relative flex min-w-0 flex-1 flex-col items-center gap-0.5 px-1 py-2 text-[10px] font-medium transition-colors ${
-                isActive
-                  ? "text-primary"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <div className="relative">
-                <Icon className="h-5 w-5" />
-                {count > 0 && (
-                  <span className="absolute -right-2.5 -top-1.5 inline-flex min-w-4 items-center justify-center rounded-full bg-primary px-1 py-px text-[9px] font-bold leading-none text-primary-foreground">
-                    {count > 99 ? "99+" : count}
-                  </span>
+            return (
+              <Link
+                key={tab.href}
+                href={tab.href}
+                aria-current={isActive ? "page" : undefined}
+                aria-label={count > 0 ? `${tab.label}, ${count} items` : undefined}
+                className={`relative flex min-w-0 flex-1 flex-col items-center gap-0.5 px-1 py-2 text-[10px] font-medium transition-colors ${
+                  isActive
+                    ? "text-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <div className="relative">
+                  <Icon className="h-5 w-5" />
+                  {count > 0 && (
+                    <span className="absolute -right-2.5 -top-1.5 inline-flex min-w-4 items-center justify-center rounded-full bg-primary px-1 py-px text-[9px] font-bold leading-none text-primary-foreground">
+                      {count > 99 ? "99+" : count}
+                    </span>
+                  )}
+                </div>
+                <span className="truncate">{tab.label}</span>
+                {isActive && (
+                  <motion.span
+                    layoutId="bottomTabIndicator"
+                    className="absolute bottom-0 left-1/4 right-1/4 h-0.5 rounded-full bg-primary"
+                    transition={{ type: "spring", stiffness: 500, damping: 35 }}
+                  />
                 )}
-              </div>
-              <span className="truncate">{tab.label}</span>
-              {isActive && (
-                <span className="absolute bottom-0 left-1/4 right-1/4 h-0.5 rounded-full bg-primary" />
-              )}
-            </Link>
-          );
-        })}
-      </div>
+              </Link>
+            );
+          })}
+        </div>
+      </LayoutGroup>
     </nav>
   );
 }

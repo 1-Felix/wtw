@@ -478,92 +478,100 @@ function SeriesGroupDetail({ item }: { item: SeriesGroupDetailItem }) {
                   <ReadinessBadge status={season.verdict.status} />
                 </button>
 
-                {/* Expanded content */}
-                {isExpanded && (
-                  <div className="border-t border-border px-3 py-3 space-y-4">
-                    {/* Progress */}
-                    <ProgressBar
-                      value={season.verdict.progressPercent}
-                      label={`${Math.round(season.verdict.progressPercent * 100)}% complete`}
-                    />
+                {/* Expanded content — animated via grid-template-rows */}
+                <div
+                  className="grid transition-[grid-template-rows] duration-200 ease-out"
+                  aria-hidden={!isExpanded}
+                  style={{
+                    gridTemplateRows: isExpanded ? "1fr" : "0fr",
+                  }}
+                >
+                  <div className="overflow-hidden">
+                    <div className="border-t border-border px-3 py-3 space-y-4">
+                      {/* Progress */}
+                      <ProgressBar
+                        value={season.verdict.progressPercent}
+                        label={`${Math.round(season.verdict.progressPercent * 100)}% complete`}
+                      />
 
-                    {/* Watched info */}
-                    {season.watchedEpisodes > 0 && (
-                      <p className="text-xs text-muted-foreground">
-                        {season.watchedEpisodes}/{season.totalEpisodes} episodes
-                        watched
-                      </p>
-                    )}
-                    {season.lastPlayedAt && (
-                      <p className="text-xs text-muted-foreground">
-                        Last watched{" "}
-                        {formatRelativeTime(season.lastPlayedAt)}
-                      </p>
-                    )}
+                      {/* Watched info */}
+                      {season.watchedEpisodes > 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          {season.watchedEpisodes}/{season.totalEpisodes} episodes
+                          watched
+                        </p>
+                      )}
+                      {season.lastPlayedAt && (
+                        <p className="text-xs text-muted-foreground">
+                          Last watched{" "}
+                          {formatRelativeTime(season.lastPlayedAt)}
+                        </p>
+                      )}
 
-                    {/* Rule results */}
-                    <RuleResultsList results={season.verdict.ruleResults} />
+                      {/* Rule results */}
+                      <RuleResultsList results={season.verdict.ruleResults} />
 
-                    {/* Episode list */}
-                    {season.episodes.length > 0 && (
-                      <div className="space-y-1">
-                        {season.episodes.map((ep) => {
-                          const isInProgress =
-                            !ep.isWatched &&
-                            ep.playbackProgress != null &&
-                            ep.playbackProgress > 0;
-                          const isTba = !ep.hasAired && !ep.hasFile;
-                          return (
-                            <div
-                              key={ep.episodeNumber}
-                              className={`flex flex-col gap-0 rounded-md border border-border/50 bg-surface${isTba ? " opacity-60" : ""}`}
-                            >
-                              <div className="flex items-center gap-3 px-3 py-2">
-                                <span className="w-6 shrink-0 text-center font-mono text-xs text-muted-foreground">
-                                  {String(ep.episodeNumber).padStart(2, "0")}
-                                </span>
-                                <EpisodeStatusIcon episode={ep} />
-                                <span className="min-w-0 flex-1 truncate text-xs text-foreground">
-                                  {ep.title}
-                                </span>
-                                {isTba ? (
-                                  <span className="shrink-0 text-[10px] text-muted-foreground">
-                                    {ep.airDateUtc ? formatAirDate(ep.airDateUtc) : "TBA"}
+                      {/* Episode list */}
+                      {season.episodes.length > 0 && (
+                        <div className="space-y-1">
+                          {season.episodes.map((ep) => {
+                            const isInProgress =
+                              !ep.isWatched &&
+                              ep.playbackProgress != null &&
+                              ep.playbackProgress > 0;
+                            const isTba = !ep.hasAired && !ep.hasFile;
+                            return (
+                              <div
+                                key={ep.episodeNumber}
+                                className={`flex flex-col gap-0 rounded-md border border-border/50 bg-surface${isTba ? " opacity-60" : ""}`}
+                              >
+                                <div className="flex items-center gap-3 px-3 py-2">
+                                  <span className="w-6 shrink-0 text-center font-mono text-xs text-muted-foreground">
+                                    {String(ep.episodeNumber).padStart(2, "0")}
                                   </span>
-                                ) : ep.audioLanguages.length > 0 ? (
-                                  <span className="shrink-0 text-[10px] text-muted-foreground">
-                                    {ep.audioLanguages.slice(0, 2).join(", ")}
+                                  <EpisodeStatusIcon episode={ep} />
+                                  <span className="min-w-0 flex-1 truncate text-xs text-foreground">
+                                    {ep.title}
                                   </span>
-                                ) : null}
-                              </div>
-                              {isInProgress && (
-                                <div className="px-3 pb-1.5">
-                                  <div
-                                    role="progressbar"
-                                    aria-valuenow={Math.round(
-                                      ep.playbackProgress! * 100
-                                    )}
-                                    aria-valuemin={0}
-                                    aria-valuemax={100}
-                                    aria-label={`${Math.round(ep.playbackProgress! * 100)}% watched`}
-                                    className="h-1 w-full overflow-hidden rounded-full bg-muted"
-                                  >
-                                    <div
-                                      className="h-full rounded-full bg-primary/60"
-                                      style={{
-                                        width: `${Math.round(ep.playbackProgress! * 100)}%`,
-                                      }}
-                                    />
-                                  </div>
+                                  {isTba ? (
+                                    <span className="shrink-0 text-[10px] text-muted-foreground">
+                                      {ep.airDateUtc ? formatAirDate(ep.airDateUtc) : "TBA"}
+                                    </span>
+                                  ) : ep.audioLanguages.length > 0 ? (
+                                    <span className="shrink-0 text-[10px] text-muted-foreground">
+                                      {ep.audioLanguages.slice(0, 2).join(", ")}
+                                    </span>
+                                  ) : null}
                                 </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
+                                {isInProgress && (
+                                  <div className="px-3 pb-1.5">
+                                    <div
+                                      role="progressbar"
+                                      aria-valuenow={Math.round(
+                                        ep.playbackProgress! * 100
+                                      )}
+                                      aria-valuemin={0}
+                                      aria-valuemax={100}
+                                      aria-label={`${Math.round(ep.playbackProgress! * 100)}% watched`}
+                                      className="h-1 w-full overflow-hidden rounded-full bg-muted"
+                                    >
+                                      <div
+                                        className="h-full rounded-full bg-primary/60"
+                                        style={{
+                                          width: `${Math.round(ep.playbackProgress! * 100)}%`,
+                                        }}
+                                      />
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                )}
+                </div>
               </div>
             );
           })}

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { Tv2, Clock, Globe, Play, Settings } from "lucide-react";
 import { NavLink } from "@/components/nav-link";
+import { motion, AnimatePresence } from "@/components/ui/motion";
 import type { NavCounts } from "@/lib/counts";
 
 interface SidebarProps {
@@ -50,11 +51,20 @@ export function Sidebar({ counts }: SidebarProps) {
       }`}
     >
       <div className="flex h-14 items-center justify-between border-b border-border px-4">
-        {!collapsed && (
-          <span className="text-lg font-semibold tracking-tight text-primary">
-            wtw
-          </span>
-        )}
+        <AnimatePresence mode="wait">
+          {!collapsed && (
+            <motion.span
+              key="brand"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.1 }}
+              className="text-lg font-semibold tracking-tight text-primary"
+            >
+              wtw
+            </motion.span>
+          )}
+        </AnimatePresence>
         {/* Collapse toggle — visible on tablet (md) and up */}
         <button
           onClick={() => setCollapsed(!collapsed)}

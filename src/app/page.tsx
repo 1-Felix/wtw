@@ -96,7 +96,7 @@ export default function ReadyToWatchPage() {
             seasons={groupSeasonsBySeries(readySeasons)}
             movies={readyMovies}
             sort={SORT_READY}
-            emptyMessage="No items are ready to watch yet."
+            emptyMessage="Your watchlist is building"
             emptyAction={
               <a
                 href="/almost-ready"

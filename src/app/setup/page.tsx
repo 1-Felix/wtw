@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,13 @@ import {
   Film,
   Clapperboard,
 } from "lucide-react";
+import {
+  motion,
+  AnimatePresence,
+  getStepSlideVariants,
+  StaggerContainer,
+  StaggerItem,
+} from "@/components/ui/motion";
 
 // --- Response Schemas ---
 
@@ -105,7 +112,7 @@ function JellyfinStep({ onNext, onBack, onConnect }: {
   onBack: () => void;
   onConnect: (service: ConnectedService) => void;
 }) {
-  const [url, setUrl] = useState("");
+  const [url, setUrl] = useState("http://jellyfin:8096");
   const [serverVerified, setServerVerified] = useState(false);
   const [serverName, setServerName] = useState("");
   const [username, setUsername] = useState("");
@@ -195,7 +202,7 @@ function JellyfinStep({ onNext, onBack, onConnect }: {
         <div className="flex gap-2">
           <Input
             type="url"
-            placeholder="http://jellyfin:8096"
+            placeholder="http://localhost:8096"
             value={url}
             onChange={(e) => {
               setUrl(e.target.value);
@@ -308,7 +315,8 @@ function ArrStep({
   onConnect: (service: ConnectedService) => void;
   onSkip: () => void;
 }) {
-  const [url, setUrl] = useState("");
+  const defaultUrl = `http://${service.toLowerCase()}:${service === "Sonarr" ? "8989" : "7878"}`;
+  const [url, setUrl] = useState(defaultUrl);
   const [apiKey, setApiKey] = useState("");
   const [testing, setTesting] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -392,7 +400,7 @@ function ArrStep({
           <label className="text-sm font-medium text-foreground">Server URL</label>
           <Input
             type="url"
-            placeholder={`http://${service.toLowerCase()}:${service === "Sonarr" ? "8989" : "7878"}`}
+            placeholder={`http://localhost:${service === "Sonarr" ? "8989" : "7878"}`}
             value={url}
             onChange={(e) => {
               setUrl(e.target.value);
@@ -469,6 +477,42 @@ function ArrStep({
 
 // --- Complete Step ---
 
+/** SVG checkmark with draw animation */
+function AnimatedCheckmark({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      className={className}
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      {/* Circle */}
+      <circle
+        cx="12"
+        cy="12"
+        r="10"
+        strokeDasharray="63"
+        strokeDashoffset="63"
+        style={{
+          animation: "checkmarkDraw 0.6s cubic-bezier(0.25, 1, 0.5, 1) forwards",
+        }}
+      />
+      {/* Check mark */}
+      <path
+        d="m9 12 2 2 4-4"
+        strokeDasharray="10"
+        strokeDashoffset="10"
+        style={{
+          animation: "checkmarkDraw 0.4s cubic-bezier(0.25, 1, 0.5, 1) 0.4s forwards",
+        }}
+      />
+    </svg>
+  );
+}
+
 function CompleteStep({
   connected,
   onFinish,
@@ -483,39 +527,37 @@ function CompleteStep({
   return (
     <div className="space-y-8 text-center">
       <div className="space-y-2">
-        <CheckCircle2 className="mx-auto h-12 w-12 text-primary" />
+        <AnimatedCheckmark className="mx-auto h-12 w-12 text-primary" />
         <h2 className="text-xl font-semibold">Setup Complete</h2>
         <p className="text-sm text-muted-foreground">
           Your media dashboard is ready.
         </p>
       </div>
 
-      <div className="space-y-3 text-left">
+      <StaggerContainer className="space-y-3 text-left">
         {connected.map((s) => (
-          <div
-            key={s.name}
-            className="flex items-center gap-3 rounded-md border border-border bg-surface p-3"
-          >
-            <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
-            <div>
-              <p className="text-sm font-medium">{s.name}</p>
-              <p className="text-xs text-muted-foreground">{s.detail}</p>
+          <StaggerItem key={s.name}>
+            <div className="flex items-center gap-3 rounded-md border border-border bg-surface p-3">
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
+              <div>
+                <p className="text-sm font-medium">{s.name}</p>
+                <p className="text-xs text-muted-foreground">{s.detail}</p>
+              </div>
             </div>
-          </div>
+          </StaggerItem>
         ))}
         {skippedServices.map((s) => (
-          <div
-            key={s}
-            className="flex items-center gap-3 rounded-md border border-border bg-surface/50 p-3 opacity-50"
-          >
-            <SkipForward className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <div>
-              <p className="text-sm font-medium">{s}</p>
-              <p className="text-xs text-muted-foreground">Skipped</p>
+          <StaggerItem key={s}>
+            <div className="flex items-center gap-3 rounded-md border border-border bg-surface/50 p-3 opacity-50">
+              <SkipForward className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <div>
+                <p className="text-sm font-medium">{s}</p>
+                <p className="text-xs text-muted-foreground">Skipped</p>
+              </div>
             </div>
-          </div>
+          </StaggerItem>
         ))}
-      </div>
+      </StaggerContainer>
 
       <Button size="lg" onClick={onFinish} className="w-full">
         Go to Dashboard
@@ -531,10 +573,13 @@ export default function SetupPage() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState<Step>("welcome");
   const [connected, setConnected] = useState<ConnectedService[]>([]);
+  const directionRef = useRef(1); // 1 = forward, -1 = backward
 
   const stepIndex = STEPS.indexOf(currentStep);
 
   function goTo(step: Step) {
+    const nextIndex = STEPS.indexOf(step);
+    directionRef.current = nextIndex > stepIndex ? 1 : -1;
     setCurrentStep(step);
   }
 
@@ -546,51 +591,95 @@ export default function SetupPage() {
     router.push("/");
   }
 
+  const variants = getStepSlideVariants(directionRef.current);
+
   return (
     <div className="space-y-6">
       <StepIndicator current={stepIndex} total={STEPS.length} />
 
-      {currentStep === "welcome" && (
-        <WelcomeStep onNext={() => goTo("jellyfin")} />
-      )}
+      <AnimatePresence mode="wait" custom={directionRef.current}>
+        {currentStep === "welcome" && (
+          <motion.div
+            key="welcome"
+            variants={variants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+          >
+            <WelcomeStep onNext={() => goTo("jellyfin")} />
+          </motion.div>
+        )}
 
-      {currentStep === "jellyfin" && (
-        <JellyfinStep
-          onNext={() => goTo("sonarr")}
-          onBack={() => goTo("welcome")}
-          onConnect={addConnected}
-        />
-      )}
+        {currentStep === "jellyfin" && (
+          <motion.div
+            key="jellyfin"
+            variants={variants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+          >
+            <JellyfinStep
+              onNext={() => goTo("sonarr")}
+              onBack={() => goTo("welcome")}
+              onConnect={addConnected}
+            />
+          </motion.div>
+        )}
 
-      {currentStep === "sonarr" && (
-        <ArrStep
-          service="Sonarr"
-          icon={Clapperboard}
-          testEndpoint="/api/services/sonarr/test"
-          saveEndpoint="/api/services/sonarr"
-          onNext={() => goTo("radarr")}
-          onBack={() => goTo("jellyfin")}
-          onConnect={addConnected}
-          onSkip={() => goTo("radarr")}
-        />
-      )}
+        {currentStep === "sonarr" && (
+          <motion.div
+            key="sonarr"
+            variants={variants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+          >
+            <ArrStep
+              service="Sonarr"
+              icon={Clapperboard}
+              testEndpoint="/api/services/sonarr/test"
+              saveEndpoint="/api/services/sonarr"
+              onNext={() => goTo("radarr")}
+              onBack={() => goTo("jellyfin")}
+              onConnect={addConnected}
+              onSkip={() => goTo("radarr")}
+            />
+          </motion.div>
+        )}
 
-      {currentStep === "radarr" && (
-        <ArrStep
-          service="Radarr"
-          icon={Film}
-          testEndpoint="/api/services/radarr/test"
-          saveEndpoint="/api/services/radarr"
-          onNext={() => goTo("complete")}
-          onBack={() => goTo("sonarr")}
-          onConnect={addConnected}
-          onSkip={() => goTo("complete")}
-        />
-      )}
+        {currentStep === "radarr" && (
+          <motion.div
+            key="radarr"
+            variants={variants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+          >
+            <ArrStep
+              service="Radarr"
+              icon={Film}
+              testEndpoint="/api/services/radarr/test"
+              saveEndpoint="/api/services/radarr"
+              onNext={() => goTo("complete")}
+              onBack={() => goTo("sonarr")}
+              onConnect={addConnected}
+              onSkip={() => goTo("complete")}
+            />
+          </motion.div>
+        )}
 
-      {currentStep === "complete" && (
-        <CompleteStep connected={connected} onFinish={handleFinish} />
-      )}
+        {currentStep === "complete" && (
+          <motion.div
+            key="complete"
+            variants={variants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+          >
+            <CompleteStep connected={connected} onFinish={handleFinish} />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

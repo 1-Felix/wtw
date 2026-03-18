@@ -7,6 +7,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { motion, AnimatePresence, crossFadeVariants } from "@/components/ui/motion";
 import { PageTitle } from "@/components/page-title";
 import { useSettings } from "./hooks/use-settings";
 import type { SettingsSection } from "./schemas";
@@ -75,28 +76,41 @@ function SettingsContent() {
           ))}
         </TabsList>
 
-        <TabsContent value="services">
-          <ServicesSection />
-        </TabsContent>
-        <TabsContent value="rules">
-          <RulesSection config={config} onChange={setConfig} />
-        </TabsContent>
-
-        <TabsContent value="notifications">
-          <NotificationsSection
-            webhooks={webhooks}
-            onWebhooksChange={setWebhooks}
-          />
-        </TabsContent>
-        <TabsContent value="dismissed">
-          <DismissedSection
-            items={dismissed}
-            onItemsChange={setDismissed}
-          />
-        </TabsContent>
-        <TabsContent value="about">
-          <AboutSection />
-        </TabsContent>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            variants={crossFadeVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+          >
+            <TabsContent value="services" forceMount={activeTab === "services" ? true : undefined}>
+              {activeTab === "services" && <ServicesSection />}
+            </TabsContent>
+            <TabsContent value="rules" forceMount={activeTab === "rules" ? true : undefined}>
+              {activeTab === "rules" && <RulesSection config={config} onChange={setConfig} />}
+            </TabsContent>
+            <TabsContent value="notifications" forceMount={activeTab === "notifications" ? true : undefined}>
+              {activeTab === "notifications" && (
+                <NotificationsSection
+                  webhooks={webhooks}
+                  onWebhooksChange={setWebhooks}
+                />
+              )}
+            </TabsContent>
+            <TabsContent value="dismissed" forceMount={activeTab === "dismissed" ? true : undefined}>
+              {activeTab === "dismissed" && (
+                <DismissedSection
+                  items={dismissed}
+                  onItemsChange={setDismissed}
+                />
+              )}
+            </TabsContent>
+            <TabsContent value="about" forceMount={activeTab === "about" ? true : undefined}>
+              {activeTab === "about" && <AboutSection />}
+            </TabsContent>
+          </motion.div>
+        </AnimatePresence>
       </Tabs>
     </div>
   );

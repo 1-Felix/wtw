@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronRight, ChevronDown, Search, Loader2 } from "lucide-react";
+import { ChevronRight, ChevronDown, Search, Loader2, Languages, CheckCircle } from "lucide-react";
+import { FadeIn } from "@/components/ui/motion";
 import { toast } from "sonner";
 import { useSyncReady } from "@/hooks/use-sync-ready";
 import { SyncGuardSpinner } from "@/components/sync-guard";
@@ -309,15 +310,27 @@ export default function LanguagesPage() {
 
       {/* Series list */}
       {filteredSeries.length === 0 && (
-        <div className="rounded-md border border-border bg-card p-8 text-center">
-          <p className="text-muted-foreground">
-            {seriesList.length === 0
-              ? "No series available. Sync media first."
-              : onlyIncomplete && incompleteTarget
-                ? `All series are complete for ${incompleteTarget}.`
-                : "No series match the current filters."}
-          </p>
-        </div>
+        <FadeIn>
+          <div className="rounded-md border border-border bg-card p-8 text-center">
+            {seriesList.length === 0 ? (
+              <>
+                <Languages className="mx-auto mb-3 h-12 w-12 text-primary/30" />
+                <p className="text-muted-foreground">No series available</p>
+                <p className="mt-1 text-xs text-muted-foreground/60">Sync your media library first</p>
+              </>
+            ) : onlyIncomplete && incompleteTarget ? (
+              <>
+                <CheckCircle className="mx-auto mb-3 h-12 w-12 text-primary/30" />
+                <p className="text-muted-foreground">All series are complete for {incompleteTarget}</p>
+              </>
+            ) : (
+              <>
+                <Search className="mx-auto mb-3 h-12 w-12 text-primary/30" />
+                <p className="text-muted-foreground">No series match the current filters</p>
+              </>
+            )}
+          </div>
+        </FadeIn>
       )}
 
       <div className="space-y-1">

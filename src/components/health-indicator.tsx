@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { FadeIn } from "@/components/ui/motion";
 
 interface ServiceHealth {
   name: string;
@@ -45,36 +46,41 @@ export function HealthIndicator() {
   const degradedServices = health.services.filter((s) => !s.connected);
 
   return (
-    <div className="flex items-center gap-2 text-xs">
-      {/* Status dot */}
-      <div className="relative flex h-2.5 w-2.5 items-center justify-center">
-        {isSyncing || isInitializing ? (
-          <div className="h-2.5 w-2.5 animate-pulse rounded-full bg-primary" />
-        ) : allHealthy ? (
-          <div className="h-2.5 w-2.5 rounded-full bg-primary" />
-        ) : (
-          <div className="h-2.5 w-2.5 rounded-full bg-destructive" />
-        )}
-      </div>
+    <FadeIn>
+      <div className="flex items-center gap-2 text-xs">
+        {/* Status dot */}
+        <div className="relative flex h-2.5 w-2.5 items-center justify-center">
+          {isSyncing || isInitializing ? (
+            <div className="h-2.5 w-2.5 animate-pulse rounded-full bg-primary transition-colors duration-300" />
+          ) : allHealthy ? (
+            <div className="h-2.5 w-2.5 rounded-full bg-primary transition-colors duration-300" />
+          ) : (
+            <div
+              className="h-2.5 w-2.5 rounded-full bg-destructive transition-colors duration-300"
+              style={{ animation: "degradedPulse 2s ease-in-out infinite" }}
+            />
+          )}
+        </div>
 
-      {/* Label */}
-      <span className="text-muted-foreground">
-        {isInitializing
-          ? "Initializing..."
-          : isSyncing
-            ? "Syncing..."
-            : degradedServices.length > 0
-              ? degradedServices.map((s) => {
-                  const lastReachable = s.lastSuccess
-                    ? `, last reachable ${formatTimeAgo(s.lastSuccess)}`
-                    : "";
-                  return `${s.name} unreachable${lastReachable}`;
-                }).join("; ")
-              : health.lastSyncEnd
-                ? `Synced ${formatTimeAgo(health.lastSyncEnd)}`
-                : "Ready"}
-      </span>
-    </div>
+        {/* Label */}
+        <span className="text-muted-foreground">
+          {isInitializing
+            ? "Initializing..."
+            : isSyncing
+              ? "Syncing..."
+              : degradedServices.length > 0
+                ? degradedServices.map((s) => {
+                    const lastReachable = s.lastSuccess
+                      ? `, last reachable ${formatTimeAgo(s.lastSuccess)}`
+                      : "";
+                    return `${s.name} unreachable${lastReachable}`;
+                  }).join("; ")
+                : health.lastSyncEnd
+                  ? `Synced ${formatTimeAgo(health.lastSyncEnd)}`
+                  : "Ready"}
+        </span>
+      </div>
+    </FadeIn>
   );
 }
 

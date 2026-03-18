@@ -184,8 +184,9 @@ describe("SeriesGroupDetail", () => {
     expect(screen.getByText("Season 2")).toBeInTheDocument();
     expect(screen.getByText("Season 3")).toBeInTheDocument();
 
-    // Episode titles should NOT be visible (collapsed)
-    expect(screen.queryByText("S1E01 Pilot")).not.toBeInTheDocument();
+    // Episode content is in the DOM but hidden (aria-hidden on collapsed accordion)
+    const ep = screen.getByText("S1E01 Pilot");
+    expect(ep.closest("[aria-hidden]")).toHaveAttribute("aria-hidden", "true");
   });
 
   it("expands a season section on click", async () => {
@@ -198,12 +199,14 @@ describe("SeriesGroupDetail", () => {
     // Click "Season 1" header
     await user.click(screen.getByText("Season 1"));
 
-    // Now episodes for season 1 should be visible
-    expect(screen.getByText("S1E01 Pilot")).toBeInTheDocument();
+    // Now episodes for season 1 should be visible (aria-hidden=false)
+    const ep1 = screen.getByText("S1E01 Pilot");
+    expect(ep1.closest("[aria-hidden]")).toHaveAttribute("aria-hidden", "false");
     expect(screen.getByText("S1E02 Second")).toBeInTheDocument();
 
     // Season 2 episodes should still be hidden
-    expect(screen.queryByText("S2E01 Pilot")).not.toBeInTheDocument();
+    const ep2 = screen.getByText("S2E01 Pilot");
+    expect(ep2.closest("[aria-hidden]")).toHaveAttribute("aria-hidden", "true");
   });
 
   it("collapses an expanded season on re-click", async () => {
@@ -215,11 +218,12 @@ describe("SeriesGroupDetail", () => {
 
     // Expand
     await user.click(screen.getByText("Season 1"));
-    expect(screen.getByText("S1E01 Pilot")).toBeInTheDocument();
+    const ep = screen.getByText("S1E01 Pilot");
+    expect(ep.closest("[aria-hidden]")).toHaveAttribute("aria-hidden", "false");
 
     // Collapse
     await user.click(screen.getByText("Season 1"));
-    expect(screen.queryByText("S1E01 Pilot")).not.toBeInTheDocument();
+    expect(ep.closest("[aria-hidden]")).toHaveAttribute("aria-hidden", "true");
   });
 
   it("allows multiple sections expanded simultaneously", async () => {
@@ -233,12 +237,15 @@ describe("SeriesGroupDetail", () => {
     await user.click(screen.getByText("Season 1"));
     await user.click(screen.getByText("Season 3"));
 
-    // Both should show their episodes
-    expect(screen.getByText("S1E01 Pilot")).toBeInTheDocument();
-    expect(screen.getByText("S3E01 Pilot")).toBeInTheDocument();
+    // Both should show their episodes (aria-hidden=false)
+    const ep1 = screen.getByText("S1E01 Pilot");
+    expect(ep1.closest("[aria-hidden]")).toHaveAttribute("aria-hidden", "false");
+    const ep3 = screen.getByText("S3E01 Pilot");
+    expect(ep3.closest("[aria-hidden]")).toHaveAttribute("aria-hidden", "false");
 
     // Season 2 still collapsed
-    expect(screen.queryByText("S2E01 Pilot")).not.toBeInTheDocument();
+    const ep2 = screen.getByText("S2E01 Pilot");
+    expect(ep2.closest("[aria-hidden]")).toHaveAttribute("aria-hidden", "true");
   });
 
   it("renders dismiss button with 'Dismiss All Seasons' label", () => {

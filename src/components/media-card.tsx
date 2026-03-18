@@ -55,14 +55,16 @@ export function SeasonCard({
     : "";
 
   return (
-    <div className="group overflow-hidden rounded-md border border-border bg-card transition-colors hover:border-primary/30">
+    <div className="group overflow-hidden rounded-md border border-border bg-card transition-all duration-200 hover:border-primary/30 hover:scale-[1.02]">
       {/* Poster */}
       <div className="relative aspect-[2/3] w-full overflow-hidden">
-        <PosterImage
-          itemId={posterImageId}
-          title={seriesTitle}
-          className="h-full w-full"
-        />
+        <div className="absolute inset-0 transition-transform duration-500 group-hover:scale-105">
+          <PosterImage
+            itemId={posterImageId}
+            title={seriesTitle}
+            className="h-full w-full"
+          />
+        </div>
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3 pt-8 tv:p-4 tv:pt-10">
           <ReadinessBadge status={verdict.status} />
         </div>
@@ -121,14 +123,16 @@ export function SeriesGroupCard({
     : "";
 
   return (
-    <div className="group overflow-hidden rounded-md border border-border bg-card transition-colors hover:border-primary/30">
+    <div className="group overflow-hidden rounded-md border border-border bg-card transition-all duration-200 hover:border-primary/30 hover:scale-[1.02]">
       {/* Poster */}
       <div className="relative aspect-[2/3] w-full overflow-hidden">
-        <PosterImage
-          itemId={posterImageId}
-          title={seriesTitle}
-          className="h-full w-full"
-        />
+        <div className="absolute inset-0 transition-transform duration-500 group-hover:scale-105">
+          <PosterImage
+            itemId={posterImageId}
+            title={seriesTitle}
+            className="h-full w-full"
+          />
+        </div>
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3 pt-8 tv:p-4 tv:pt-10">
           <ReadinessBadge status={verdict.status} />
         </div>
@@ -177,14 +181,16 @@ export function MovieCard({
   verdict,
 }: MovieCardProps) {
   return (
-    <div className="group overflow-hidden rounded-md border border-border bg-card transition-colors hover:border-primary/30">
+    <div className="group overflow-hidden rounded-md border border-border bg-card transition-all duration-200 hover:border-primary/30 hover:scale-[1.02]">
       {/* Poster */}
       <div className="relative aspect-[2/3] w-full overflow-hidden">
-        <PosterImage
-          itemId={posterImageId}
-          title={title}
-          className="h-full w-full"
-        />
+        <div className="absolute inset-0 transition-transform duration-500 group-hover:scale-105">
+          <PosterImage
+            itemId={posterImageId}
+            title={title}
+            className="h-full w-full"
+          />
+        </div>
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3 pt-8 tv:p-4 tv:pt-10">
           <ReadinessBadge status={verdict.status} />
         </div>

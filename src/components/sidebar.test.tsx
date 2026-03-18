@@ -33,6 +33,17 @@ vi.mock("lucide-react", () => ({
   Settings: (props: Record<string, unknown>) => <span data-testid="icon-settings" {...props} />,
 }));
 
+vi.mock("@/components/ui/motion", () => ({
+  motion: {
+    span: ({ children, ...rest }: Record<string, unknown>) => {
+      const safe = Object.fromEntries(Object.entries(rest).filter(([k]) => !["variants", "initial", "animate", "exit", "layout", "layoutId", "transition"].includes(k)));
+      return <span {...safe}>{children as React.ReactNode}</span>;
+    },
+  },
+  AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  LayoutGroup: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
 import { Sidebar } from "./sidebar";
 import type { NavCounts } from "@/lib/counts";
 

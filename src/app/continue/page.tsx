@@ -2,12 +2,20 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { CircleCheck } from "lucide-react";
+import { CircleCheck, PlayCircle } from "lucide-react";
 import { PosterImage } from "@/components/poster-image";
 import { ProgressBar } from "@/components/progress-bar";
 import { useSyncReady } from "@/hooks/use-sync-ready";
 import { SyncGuardSpinner } from "@/components/sync-guard";
 import { PageTitle } from "@/components/page-title";
+import {
+  motion,
+  AnimatePresence,
+  slideRightExitVariants,
+  FadeIn,
+  StaggerContainer,
+  StaggerItem,
+} from "@/components/ui/motion";
 
 interface ContinueItem {
   type: "episode" | "movie";
@@ -143,78 +151,92 @@ export default function ContinueWatchingPage() {
       <PageTitle>Continue Watching</PageTitle>
 
       {items.length === 0 ? (
-        <div className="rounded-md border border-border bg-card p-8 text-center">
-          <p className="text-muted-foreground">
-            Nothing in progress. Start watching something!
-          </p>
-        </div>
+        <FadeIn>
+          <div className="rounded-md border border-border bg-card p-8 text-center">
+            <PlayCircle className="mx-auto mb-3 h-12 w-12 text-primary/30" />
+            <p className="text-muted-foreground">Nothing in progress</p>
+            <p className="mt-1 text-xs text-muted-foreground/60">
+              Start watching something on Jellyfin and it will appear here
+            </p>
+          </div>
+        </FadeIn>
       ) : (
-        <div className="space-y-2">
-          {items.map((item) => (
-            <div
-              key={item.id}
-              className="flex items-center gap-4 rounded-md border border-border bg-card p-3 transition-colors hover:border-primary/30"
-            >
-              {/* Poster thumbnail */}
-              <div className="relative h-16 w-11 shrink-0 overflow-hidden rounded-sm">
-                <PosterImage
-                  itemId={item.posterImageId}
-                  title={
-                    item.type === "episode"
-                      ? (item.seriesTitle ?? "")
-                      : (item.title ?? "")
-                  }
-                  className="h-full w-full"
-                />
-              </div>
-
-              {/* Info */}
-              <div className="min-w-0 flex-1">
-                {item.type === "episode" ? (
-                  <>
-                    <p className="truncate text-sm font-semibold text-foreground">
-                      {item.seriesTitle}
-                    </p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      S{String(item.seasonNumber).padStart(2, "0")}E
-                      {String(item.episodeNumber).padStart(2, "0")} &middot;{" "}
-                      {item.episodeTitle}
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <p className="truncate text-sm font-semibold text-foreground">
-                      {item.title}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {item.year ?? ""}
-                    </p>
-                  </>
-                )}
-                <ProgressBar
-                  value={item.playbackProgress}
-                  className="mt-1.5"
-                />
-              </div>
-
-              {/* Progress percentage */}
-              <span className="shrink-0 text-xs font-mono text-muted-foreground">
-                {Math.round(item.playbackProgress * 100)}%
-              </span>
-
-              {/* Mark as watched button */}
-              <button
-                type="button"
-                onClick={() => handleMarkWatched(item)}
-                disabled={markingIds.has(item.id)}
-                title="Mark as watched"
-                className="shrink-0 rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary disabled:opacity-50"
+        <StaggerContainer className="space-y-2">
+          <AnimatePresence mode="popLayout">
+            {items.map((item) => (
+              <motion.div
+                key={item.id}
+                layout
+                variants={slideRightExitVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
               >
-                <CircleCheck className="h-5 w-5" />
-              </button>
-            </div>
-          ))}
-        </div>
+                <StaggerItem>
+                  <div className="flex items-center gap-4 rounded-md border border-border bg-card p-3 transition-colors hover:border-primary/30">
+                    {/* Poster thumbnail */}
+                    <div className="relative h-16 w-11 shrink-0 overflow-hidden rounded-sm">
+                      <PosterImage
+                        itemId={item.posterImageId}
+                        title={
+                          item.type === "episode"
+                            ? (item.seriesTitle ?? "")
+                            : (item.title ?? "")
+                        }
+                        className="h-full w-full"
+                      />
+                    </div>
+
+                    {/* Info */}
+                    <div className="min-w-0 flex-1">
+                      {item.type === "episode" ? (
+                        <>
+                          <p className="truncate text-sm font-semibold text-foreground">
+                            {item.seriesTitle}
+                          </p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            S{String(item.seasonNumber).padStart(2, "0")}E
+                            {String(item.episodeNumber).padStart(2, "0")} &middot;{" "}
+                            {item.episodeTitle}
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="truncate text-sm font-semibold text-foreground">
+                            {item.title}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {item.year ?? ""}
+                          </p>
+                        </>
+                      )}
+                      <ProgressBar
+                        value={item.playbackProgress}
+                        className="mt-1.5"
+                      />
+                    </div>
+
+                    {/* Progress percentage */}
+                    <span className="shrink-0 text-xs font-mono text-muted-foreground">
+                      {Math.round(item.playbackProgress * 100)}%
+                    </span>
+
+                    {/* Mark as watched button */}
+                    <button
+                      type="button"
+                      onClick={() => handleMarkWatched(item)}
+                      disabled={markingIds.has(item.id)}
+                      title="Mark as watched"
+                      className="shrink-0 rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary disabled:opacity-50"
+                    >
+                      <CircleCheck className="h-5 w-5" />
+                    </button>
+                  </div>
+                </StaggerItem>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </StaggerContainer>
       )}
     </div>
   );

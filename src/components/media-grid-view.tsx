@@ -13,6 +13,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tv, Clock, SearchX, Filter } from "lucide-react";
+import {
+  motion,
+  AnimatePresence,
+  useReducedMotion,
+  StaggerContainer,
+  StaggerItem,
+  FadeIn,
+  listItemVariants,
+} from "@/components/ui/motion";
 import type {
   DetailItem,
   SeasonDetailItem,
@@ -126,11 +136,19 @@ export interface MovieItem {
   verdict: ReadinessVerdict;
 }
 
+type EmptyIconName = "tv" | "clock";
+
+const emptyIconMap: Record<EmptyIconName, React.ElementType> = {
+  tv: Tv,
+  clock: Clock,
+};
+
 interface MediaGridViewProps {
   seasons: (SeasonItem | SeriesGroupItem)[];
   movies: MovieItem[];
   emptyMessage: string;
   emptyAction?: React.ReactNode;
+  emptyIcon?: EmptyIconName;
   sort?: SortConfig;
 }
 
@@ -145,8 +163,10 @@ export function MediaGridView({
   movies,
   emptyMessage,
   emptyAction,
+  emptyIcon = "tv",
   sort: sortConfig,
 }: MediaGridViewProps) {
+  const EmptyIcon = emptyIconMap[emptyIcon];
   const router = useRouter();
   const searchParams = useSearchParams();
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -399,10 +419,13 @@ export function MediaGridView({
 
   if (!hasData) {
     return (
-      <div className="rounded-md border border-border bg-card p-8 text-center">
-        <p className="text-muted-foreground">{emptyMessage}</p>
-        {emptyAction}
-      </div>
+      <FadeIn>
+        <div className="rounded-md border border-border bg-card p-8 text-center">
+          <EmptyIcon className="mx-auto mb-3 h-12 w-12 text-primary/30" />
+          <p className="text-muted-foreground">{emptyMessage}</p>
+          {emptyAction}
+        </div>
+      </FadeIn>
     );
   }
 
@@ -448,19 +471,25 @@ export function MediaGridView({
       </div>
 
       {!hasResults && query && (
-        <div className="rounded-md border border-border bg-card p-8 text-center">
-          <p className="text-muted-foreground">
-            No results for &ldquo;{query}&rdquo;
-          </p>
-        </div>
+        <FadeIn>
+          <div className="rounded-md border border-border bg-card p-8 text-center">
+            <SearchX className="mx-auto mb-3 h-12 w-12 text-primary/30" />
+            <p className="text-muted-foreground">
+              No results for &ldquo;{query}&rdquo;
+            </p>
+          </div>
+        </FadeIn>
       )}
 
       {!hasResults && !query && (
-        <div className="rounded-md border border-border bg-card p-8 text-center">
-          <p className="text-muted-foreground">
-            No {typeFilter === "series" ? "series" : typeFilter === "movies" ? "movies" : "items"} to show.
-          </p>
-        </div>
+        <FadeIn>
+          <div className="rounded-md border border-border bg-card p-8 text-center">
+            <Filter className="mx-auto mb-3 h-12 w-12 text-primary/30" />
+            <p className="text-muted-foreground">
+              No {typeFilter === "series" ? "series" : typeFilter === "movies" ? "movies" : "items"} to show
+            </p>
+          </div>
+        </FadeIn>
       )}
 
       {hasResults && (
@@ -470,56 +499,78 @@ export function MediaGridView({
               <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Series
               </h3>
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 tv:grid-cols-7 tv:gap-6">
-                {filteredSeasons.map((item) =>
-                  isSeriesGroup(item) ? (
-                    <button
-                      key={`group-${item.seriesId}`}
-                      onClick={() => handleSeasonClick(item)}
-                      className="cursor-pointer text-left"
-                    >
-                      <SeriesGroupCard
-                        seriesTitle={item.seriesTitle}
-                        seasonNumbers={item.seasons.map(
-                          (s) => s.seasonNumber
-                        )}
-                        totalEpisodes={item.seasons.reduce(
-                          (sum, s) => sum + s.totalEpisodes,
-                          0
-                        )}
-                        availableEpisodes={item.seasons.reduce(
-                          (sum, s) => sum + s.availableEpisodes,
-                          0
-                        )}
-                        posterImageId={item.posterImageId}
-                        verdict={item.verdict}
-                        watchedEpisodes={item.seasons.reduce(
-                          (sum, s) => sum + (s.watchedEpisodes ?? 0),
-                          0
-                        )}
-                        languageOverride={item.languageOverride}
-                      />
-                    </button>
-                  ) : (
-                    <button
-                      key={`${item.seriesId}-s${item.seasonNumber}`}
-                      onClick={() => handleSeasonClick(item)}
-                      className="cursor-pointer text-left"
-                    >
-                      <SeasonCard
-                        seriesTitle={item.seriesTitle}
-                        seasonNumber={item.seasonNumber}
-                        totalEpisodes={item.totalEpisodes}
-                        availableEpisodes={item.availableEpisodes}
-                        posterImageId={item.posterImageId}
-                        verdict={item.verdict}
-                        watchedEpisodes={item.watchedEpisodes}
-                        languageOverride={item.languageOverride}
-                      />
-                    </button>
-                  )
-                )}
-              </div>
+              <StaggerContainer className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 tv:grid-cols-7 tv:gap-6">
+                <AnimatePresence mode="popLayout">
+                  {filteredSeasons.map((item) =>
+                    isSeriesGroup(item) ? (
+                      <motion.div
+                        key={`group-${item.seriesId}`}
+                        layout
+                        variants={listItemVariants}
+                        initial="initial"
+                        animate="animate"
+                        exit="exit"
+                      >
+                        <StaggerItem>
+                          <button
+                            onClick={() => handleSeasonClick(item)}
+                            className="w-full cursor-pointer text-left"
+                          >
+                            <SeriesGroupCard
+                              seriesTitle={item.seriesTitle}
+                              seasonNumbers={item.seasons.map(
+                                (s) => s.seasonNumber
+                              )}
+                              totalEpisodes={item.seasons.reduce(
+                                (sum, s) => sum + s.totalEpisodes,
+                                0
+                              )}
+                              availableEpisodes={item.seasons.reduce(
+                                (sum, s) => sum + s.availableEpisodes,
+                                0
+                              )}
+                              posterImageId={item.posterImageId}
+                              verdict={item.verdict}
+                              watchedEpisodes={item.seasons.reduce(
+                                (sum, s) => sum + (s.watchedEpisodes ?? 0),
+                                0
+                              )}
+                              languageOverride={item.languageOverride}
+                            />
+                          </button>
+                        </StaggerItem>
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key={`${item.seriesId}-s${item.seasonNumber}`}
+                        layout
+                        variants={listItemVariants}
+                        initial="initial"
+                        animate="animate"
+                        exit="exit"
+                      >
+                        <StaggerItem>
+                          <button
+                            onClick={() => handleSeasonClick(item)}
+                            className="w-full cursor-pointer text-left"
+                          >
+                            <SeasonCard
+                              seriesTitle={item.seriesTitle}
+                              seasonNumber={item.seasonNumber}
+                              totalEpisodes={item.totalEpisodes}
+                              availableEpisodes={item.availableEpisodes}
+                              posterImageId={item.posterImageId}
+                              verdict={item.verdict}
+                              watchedEpisodes={item.watchedEpisodes}
+                              languageOverride={item.languageOverride}
+                            />
+                          </button>
+                        </StaggerItem>
+                      </motion.div>
+                    )
+                  )}
+                </AnimatePresence>
+              </StaggerContainer>
             </section>
           )}
 
@@ -528,23 +579,35 @@ export function MediaGridView({
               <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Movies
               </h3>
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 tv:grid-cols-7 tv:gap-6">
-                {filteredMovies.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => handleMovieClick(item)}
-                    className="cursor-pointer text-left"
-                  >
-                    <MovieCard
-                      title={item.title}
-                      year={item.year}
-                      posterImageId={item.posterImageId}
-                      audioLanguages={item.audioLanguages}
-                      verdict={item.verdict}
-                    />
-                  </button>
-                ))}
-              </div>
+              <StaggerContainer className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 tv:grid-cols-7 tv:gap-6">
+                <AnimatePresence mode="popLayout">
+                  {filteredMovies.map((item) => (
+                    <motion.div
+                      key={item.id}
+                      layout
+                      variants={listItemVariants}
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                    >
+                      <StaggerItem>
+                        <button
+                          onClick={() => handleMovieClick(item)}
+                          className="w-full cursor-pointer text-left"
+                        >
+                          <MovieCard
+                            title={item.title}
+                            year={item.year}
+                            posterImageId={item.posterImageId}
+                            audioLanguages={item.audioLanguages}
+                            verdict={item.verdict}
+                          />
+                        </button>
+                      </StaggerItem>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </StaggerContainer>
             </section>
           )}
         </div>

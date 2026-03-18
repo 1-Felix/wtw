@@ -56,6 +56,12 @@ vi.mock("lucide-react", () => ({
   ChevronDown: () => <span data-testid="icon-chevron-down" />,
   Search: () => <span data-testid="icon-search" />,
   Loader2: () => <span data-testid="icon-loader" />,
+  Languages: () => <span data-testid="icon-languages" />,
+  CheckCircle: () => <span data-testid="icon-check-circle" />,
+}));
+
+vi.mock("@/components/ui/motion", () => ({
+  FadeIn: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
 vi.mock("sonner", () => ({
@@ -470,7 +476,7 @@ describe("LanguagesPage", () => {
       // All series are complete for English → positive message
       await waitFor(() => {
         expect(
-          screen.getByText("All series are complete for English."),
+          screen.getByText("All series are complete for English"),
         ).toBeInTheDocument();
       });
     });
@@ -486,7 +492,10 @@ describe("LanguagesPage", () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText("No series available. Sync media first."),
+          screen.getByText("No series available"),
+        ).toBeInTheDocument();
+        expect(
+          screen.getByText("Sync your media library first"),
         ).toBeInTheDocument();
       });
     });
@@ -519,7 +528,7 @@ describe("LanguagesPage", () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText("No series match the current filters."),
+          screen.getByText("No series match the current filters"),
         ).toBeInTheDocument();
       });
     });

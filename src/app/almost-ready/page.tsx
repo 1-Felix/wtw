@@ -96,7 +96,8 @@ export default function AlmostReadyPage() {
             seasons={groupSeasonsBySeries(almostReadySeasons)}
             movies={almostReadyMovies}
             sort={SORT_ALMOST_READY}
-            emptyMessage="No items are almost ready."
+            emptyMessage="Nothing almost ready yet"
+            emptyIcon="clock"
           />
         </Suspense>
       </div>

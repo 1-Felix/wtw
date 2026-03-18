@@ -111,7 +111,30 @@ vi.mock("lucide-react", () => ({
   ArrowLeft: () => <span data-testid="icon-arrow-left" />,
   EyeOff: () => <span data-testid="icon-eye-off" />,
   Search: () => <span data-testid="icon-search" />,
+  SearchX: () => <span data-testid="icon-search-x" />,
   X: () => <span data-testid="icon-x" />,
+  Tv: () => <span data-testid="icon-tv" />,
+  Clock: () => <span data-testid="icon-clock" />,
+  Filter: () => <span data-testid="icon-filter" />,
+  ExternalLink: () => <span data-testid="icon-external-link" />,
+}));
+
+vi.mock("@/components/ui/motion", () => ({
+  motion: {
+    div: ({ children, ...rest }: Record<string, unknown>) => <div {...Object.fromEntries(Object.entries(rest).filter(([k]) => !k.startsWith("variants") && k !== "initial" && k !== "animate" && k !== "exit" && k !== "layout"))}>{children as React.ReactNode}</div>,
+    span: ({ children, ...rest }: Record<string, unknown>) => <span {...Object.fromEntries(Object.entries(rest).filter(([k]) => !k.startsWith("variants") && k !== "initial" && k !== "animate" && k !== "exit" && k !== "layout" && k !== "layoutId" && k !== "transition"))}>{children as React.ReactNode}</span>,
+  },
+  AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  useReducedMotion: () => false,
+  LayoutGroup: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  StaggerContainer: ({ children, className }: { children: React.ReactNode; className?: string }) => <div className={className}>{children}</div>,
+  StaggerItem: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  FadeIn: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  SlideUp: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  listItemVariants: {},
+  slideRightExitVariants: {},
+  crossFadeVariants: {},
+  getStepSlideVariants: () => ({}),
 }));
 
 const mockReplace = vi.fn();
