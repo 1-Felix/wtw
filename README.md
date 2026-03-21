@@ -127,6 +127,10 @@ docker run -d \
 
 </details>
 
+## Architecture
+
+![Architecture Diagram](docs/screenshots/architecture.png)
+
 ## Configuration
 
 All configuration is managed from the **Settings** page in the dashboard — rules, language targets, per-series overrides, notification webhooks, and service connections.
